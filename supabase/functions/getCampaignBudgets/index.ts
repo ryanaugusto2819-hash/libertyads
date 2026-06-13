@@ -51,6 +51,10 @@ function getAccountConfigs(): AccountConfig[] {
   const t9 = Deno.env.get("META_ACCESS_TOKEN_9") || mainToken;
   if (t9 && a9) configs.push({ label: "bm9", accessToken: t9, adAccount: a9 });
 
+  const a10 = Deno.env.get("META_AD_ACCOUNT_10") || "1486615489258696";
+  const t10 = Deno.env.get("META_ACCESS_TOKEN_10") || Deno.env.get("META_ACCESS_TOKEN_9") || mainToken;
+  if (t10 && a10) configs.push({ label: "bm10", accessToken: t10, adAccount: a10 });
+
   return configs;
 }
 

@@ -17,6 +17,7 @@ function getAllTokens(preferred?: string): { name: string; token: string }[] {
     bm7: Deno.env.get("META_ACCESS_TOKEN_7"),
     bm8: Deno.env.get("META_ACCESS_TOKEN_8"),
     bm9: Deno.env.get("META_ACCESS_TOKEN_9"),
+    bm10: Deno.env.get("META_ACCESS_TOKEN_10") || Deno.env.get("META_ACCESS_TOKEN_9"),
   };
   const order = preferred && map[preferred]
     ? [preferred, ...Object.keys(map).filter((k) => k !== preferred)]
