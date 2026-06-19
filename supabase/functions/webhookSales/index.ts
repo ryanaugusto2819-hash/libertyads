@@ -76,7 +76,11 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const nowBRT = new Date().toLocaleString("en-CA", { timeZone: "America/Sao_Paulo" }).split(",")[0];
+    const toBrtDate = (value?: any) => {
+      const d = value ? new Date(value) : new Date();
+      const valid = !isNaN(d.getTime()) ? d : new Date();
+      return valid.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+    };
 
     // Normalize numeric values like "R$ 1.000,50" or "1000" or 1000
     const toNumber = (v: any): number => {
@@ -121,8 +125,9 @@ Deno.serve(async (req) => {
       if (adTitle && creative.length <= 5) creative = adTitle;
 
       const phoneRaw = pick(entry, "phone", "telefone", "celular", "whatsapp", "telephone", "contact_phone");
+      const receivedAt = pick(entry, "created_at", "timestamp", "sent_at", "paid_at", "event_time");
       return {
-        date: pick(entry, "date", "data") || nowBRT,
+        date: toBrtDate(receivedAt),
         campaign,
         revenue: toNumber(pick(entry, "revenue", "valor", "value", "price", "preco", "preço", "amount")),
         sales: 1,
