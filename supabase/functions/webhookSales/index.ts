@@ -103,9 +103,10 @@ Deno.serve(async (req) => {
       const campaign = String(pick(entry, "campaign", "campanha") || "");
       let country = String(pick(entry, "country", "pais", "país") || "").toUpperCase().trim();
 
-      // Infer country from campaign prefix when missing or inconsistent with campaign name
-      // e.g. "(UY-PROSTA) ADS03" → UY, "(AR-ADULTO) ..." → AR, "(BR-...)" → BR
-      const campPrefix = campaign.match(/\(\s*(UY|AR|BR)[-\s]/i)?.[1]?.toUpperCase();
+      // Infer country from campaign tag when missing or inconsistent with campaign name
+      // e.g. "(UY-PROSTA) ADS03" → UY, "(EMA-UY) E13" → UY, "(AR-ADULTO)" → AR
+      const campaignTag = campaign.match(/\(([^)]*)\)/)?.[1] || campaign;
+      const campPrefix = campaignTag.match(/(?:^|[^A-Z0-9])(UY|AR|BR)(?:[^A-Z0-9]|$)/i)?.[1]?.toUpperCase();
       if (campPrefix && campPrefix !== country) {
         console.log(`Country override: payload=${country} → campaign prefix=${campPrefix}`);
         country = campPrefix;
