@@ -898,12 +898,12 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
               })}
 
               {/* Unmatched sales */}
-              {uSales > 0 && (
-                <tr className="border-t border-border/20 bg-muted/20">
+              {unmatchedGroups.map((group) => (
+                <tr key={group.label} className="border-t border-border/20 bg-muted/20">
                   <td className="px-4 py-3.5 font-medium text-sm whitespace-nowrap italic text-muted-foreground sticky left-0 bg-muted/20 z-10">
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-muted-foreground/30" />
-                      Sem criativo
+                      <span className="truncate max-w-[220px]" title={group.label}>{group.label}</span>
                     </div>
                   </td>
                   <td className="px-2 py-3.5 text-center"><Badge variant="secondary" className="bg-muted/60 text-muted-foreground border-0 text-[10px]">—</Badge></td>
@@ -912,14 +912,14 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground">—</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground border-r border-border/[0.06]">—</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground">—</td>
-                  <td className="text-right text-sm tabular-nums px-3 py-3.5 font-medium">{uSales.toLocaleString("pt-BR")}</td>
+                  <td className="text-right text-sm tabular-nums px-3 py-3.5 font-medium">{group.sales.toLocaleString("pt-BR")}</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground">—</td>
-                  <td className="text-right text-sm tabular-nums px-3 py-3.5 border-r border-border/[0.06]">R${fmt(uSales > 0 ? uRevenue / uSales : 0)}</td>
+                  <td className="text-right text-sm tabular-nums px-3 py-3.5 border-r border-border/[0.06]">R${fmt(group.sales > 0 ? group.revenue / group.sales : 0)}</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground">—</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground">—</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground">—</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground border-r border-border/[0.06]">—</td>
-                  <td className="text-right text-sm tabular-nums px-3 py-3.5 font-semibold">R${fmt(uRevenue)}</td>
+                  <td className="text-right text-sm tabular-nums px-3 py-3.5 font-semibold">R${fmt(group.revenue)}</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground border-r border-border/[0.06]">—</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground">—</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground">—</td>
@@ -927,7 +927,7 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground border-r border-border/[0.06]">—</td>
                   <td className="px-2 py-3.5" />
                 </tr>
-              )}
+              ))}
 
               {/* TOTAL row */}
               {(() => {
