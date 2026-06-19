@@ -334,6 +334,15 @@ const Index = () => {
     return true;
   };
 
+  const isSaleNicho = (sale: any, nicho: "adulto" | "emagrecimento" | "prostata" | "diabetes") => {
+    const source = [sale.campaign || "", sale.creative || ""].join(" ").toLowerCase();
+    if (nicho === "adulto") return source.includes("adulto");
+    if (nicho === "emagrecimento") return source.includes("ema");
+    if (nicho === "prostata") return source.includes("prosta");
+    if (nicho === "diabetes") return source.includes("diabe");
+    return true;
+  };
+
   const filteredData = useMemo(() => {
     let result = data;
     if (countryFilter !== "all") result = result.filter(ad => isAdCountry(ad, countryFilter));
@@ -341,10 +350,28 @@ const Index = () => {
     return result;
   }, [data, countryFilter, nichoFilter]);
 
-  // Get ad names from filtered data to filter sales by nicho
-  const filteredAdNames = useMemo(() => {
-    return new Set(filteredData.map(ad => (ad.ad_name || ad.name || "").toLowerCase().trim()).filter(Boolean));
+  // Get ad/campaign names from filtered data to filter sales by nicho
+  const filteredSaleSources = useMemo(() => {
+    return new Set(
+      filteredData
+        .flatMap(ad => [ad.ad_name || ad.name || "", ad.campaign_name || ""])
+        .map(value => value.toLowerCase().trim())
+        .filter(Boolean)
+    );
   }, [filteredData]);
+
+  const matchesFilteredSaleSource = (sale: any, sourceSet: Set<string>) => {
+    const candidates = [sale.creative || "", sale.campaign || ""]
+      .map(value => value.toLowerCase().trim())
+      .filter(Boolean);
+
+    return candidates.some((candidate) => {
+      if (sourceSet.has(candidate)) return true;
+      const stripped = candidate.replace(/ ar$/, "");
+      if (stripped !== candidate && sourceSet.has(stripped)) return true;
+      return candidate.length > 5 && Array.from(sourceSet).some(source => source.includes(candidate) || candidate.includes(source));
+    });
+  };
 
   const filteredSalesData = useMemo(() => {
     let result = salesData;
@@ -358,17 +385,11 @@ const Index = () => {
     }
     if (nichoFilter !== "all") {
       result = result.filter(s => {
-        const creative = (s.creative || "").toLowerCase().trim();
-        if (!creative) return false;
-        // Match sale to filtered ads by creative name
-        if (filteredAdNames.has(creative)) return true;
-        const stripped = creative.replace(/ ar$/, "");
-        if (stripped !== creative && filteredAdNames.has(stripped)) return true;
-        return false;
+        return isSaleNicho(s, nichoFilter) || matchesFilteredSaleSource(s, filteredSaleSources);
       });
     }
     return result;
-  }, [salesData, countryFilter, nichoFilter, filteredAdNames]);
+  }, [salesData, countryFilter, nichoFilter, filteredSaleSources]);
 
   const filteredPrevData = useMemo(() => {
     let result = prevData;
@@ -377,8 +398,13 @@ const Index = () => {
     return result;
   }, [prevData, countryFilter, nichoFilter]);
 
-  const filteredPrevAdNames = useMemo(() => {
-    return new Set(filteredPrevData.map(ad => (ad.ad_name || ad.name || "").toLowerCase().trim()).filter(Boolean));
+  const filteredPrevSaleSources = useMemo(() => {
+    return new Set(
+      filteredPrevData
+        .flatMap(ad => [ad.ad_name || ad.name || "", ad.campaign_name || ""])
+        .map(value => value.toLowerCase().trim())
+        .filter(Boolean)
+    );
   }, [filteredPrevData]);
 
   const filteredPrevSalesData = useMemo(() => {
@@ -393,16 +419,11 @@ const Index = () => {
     }
     if (nichoFilter !== "all") {
       result = result.filter(s => {
-        const creative = (s.creative || "").toLowerCase().trim();
-        if (!creative) return false;
-        if (filteredPrevAdNames.has(creative)) return true;
-        const stripped = creative.replace(/ ar$/, "");
-        if (stripped !== creative && filteredPrevAdNames.has(stripped)) return true;
-        return false;
+        return isSaleNicho(s, nichoFilter) || matchesFilteredSaleSource(s, filteredPrevSaleSources);
       });
     }
     return result;
-  }, [prevSalesData, countryFilter, nichoFilter, filteredPrevAdNames]);
+  }, [prevSalesData, countryFilter, nichoFilter, filteredPrevSaleSources]);
 
   const deduplicatedAds = useMemo(() => {
     const map = new Map<string, any>();

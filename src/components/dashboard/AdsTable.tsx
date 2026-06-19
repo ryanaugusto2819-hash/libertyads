@@ -253,13 +253,12 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
     }
   };
 
-  const isEmpty = !ads || ads.length === 0;
-
   // Build rows data
   const allAdNames = ads.map(a => (a.ad_name || a.name || "").toLowerCase().trim()).filter(Boolean);
 
   // Normalize: lowercase, remove punctuation, collapse whitespace
   const norm = (s: string) => (s || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim().replace(/\s+/g, " ");
+  const extractCampaignKey = (value: string) => norm(value).match(/(?:^|\s)(uy|ar|br)\s+([a-z]+)\s+ads\s*0*(\d+)\s+api\s*0*(\d+)(?:\s|$)/)?.slice(1).join("|") || "";
 
   // Match sales by CAMPAIGN NAME only (ignore creative/ad name)
   const matchSale = (s: any, _adNameNorm: string, adCampaignNorm: string, adName: string) => {
@@ -267,6 +266,9 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
     const campFull = norm(s.campaign || "");
     const adCamp = norm(adCampaignNorm);
     if (!campFull || !adCamp) return { match: false, byCreative: false };
+    const saleKey = extractCampaignKey(s.campaign || "");
+    const adKey = extractCampaignKey(adCampaignNorm || "");
+    if (saleKey && adKey && saleKey === adKey) return { match: true, byCreative: false };
     if (adCamp === campFull) return { match: true, byCreative: false };
     if (campFull.length > 5 && (adCamp.includes(campFull) || campFull.includes(adCamp))) return { match: true, byCreative: false };
     return { match: false, byCreative: false };
@@ -390,6 +392,8 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
     if (cFull === "sem criativo" || cFull === "não identificado" || cFull === "sem crtiativo" || cFull === "criativo não identificado") return true;
     if (cFull && allAdNames.includes(cFull)) return false;
     if (campFull && allCampaignNames.includes(campFull)) return false;
+    const saleKey = extractCampaignKey(s.campaign || "");
+    if (saleKey && allCampaignNames.some(cn => extractCampaignKey(cn) === saleKey)) return false;
     // Fuzzy match: check if any campaign/ad contains or is contained by the sale's names
     if (campFull && campFull.length > 5 && allCampaignNames.some(cn => cn.includes(campFull) || campFull.includes(cn))) return false;
     if (cFull && cFull.length > 5 && allCampaignNames.some(cn => cn.includes(cFull) || cFull.includes(cn))) return false;
@@ -407,6 +411,14 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
     if (currency === "ARS") return sum + raw / 278.39;
     return sum + raw;
   }, 0);
+  const unmatchedGroups = Array.from(unmatchedSales.reduce((map, s) => {
+    const key = (s.campaign || s.creative || "Sem campanha").trim() || "Sem campanha";
+    const current = map.get(key) || { label: key, sales: 0, revenue: 0 };
+    current.sales += Number(s.sales || 0);
+    current.revenue += convertRev(s);
+    map.set(key, current);
+    return map;
+  }, new Map<string, { label: string; sales: number; revenue: number }>()).values());
 
   const toggleSort = useCallback((key: SortKey) => {
     if (sortKey === key) {
@@ -503,7 +515,7 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
     );
   };
 
-  if (isEmpty) {
+  if ((!ads || ads.length === 0) && salesData.length === 0) {
     return (
       <div className="glass-card p-8 text-center text-muted-foreground text-sm">
         Nenhum anúncio encontrado no período selecionado.
@@ -886,12 +898,12 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
               })}
 
               {/* Unmatched sales */}
-              {uSales > 0 && (
-                <tr className="border-t border-border/20 bg-muted/20">
+              {unmatchedGroups.map((group) => (
+                <tr key={group.label} className="border-t border-border/20 bg-muted/20">
                   <td className="px-4 py-3.5 font-medium text-sm whitespace-nowrap italic text-muted-foreground sticky left-0 bg-muted/20 z-10">
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-muted-foreground/30" />
-                      Sem criativo
+                      <span className="truncate max-w-[220px]" title={group.label}>{group.label}</span>
                     </div>
                   </td>
                   <td className="px-2 py-3.5 text-center"><Badge variant="secondary" className="bg-muted/60 text-muted-foreground border-0 text-[10px]">—</Badge></td>
@@ -900,14 +912,14 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground">—</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground border-r border-border/[0.06]">—</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground">—</td>
-                  <td className="text-right text-sm tabular-nums px-3 py-3.5 font-medium">{uSales.toLocaleString("pt-BR")}</td>
+                  <td className="text-right text-sm tabular-nums px-3 py-3.5 font-medium">{group.sales.toLocaleString("pt-BR")}</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground">—</td>
-                  <td className="text-right text-sm tabular-nums px-3 py-3.5 border-r border-border/[0.06]">R${fmt(uSales > 0 ? uRevenue / uSales : 0)}</td>
+                  <td className="text-right text-sm tabular-nums px-3 py-3.5 border-r border-border/[0.06]">R${fmt(group.sales > 0 ? group.revenue / group.sales : 0)}</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground">—</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground">—</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground">—</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground border-r border-border/[0.06]">—</td>
-                  <td className="text-right text-sm tabular-nums px-3 py-3.5 font-semibold">R${fmt(uRevenue)}</td>
+                  <td className="text-right text-sm tabular-nums px-3 py-3.5 font-semibold">R${fmt(group.revenue)}</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground border-r border-border/[0.06]">—</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground">—</td>
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground">—</td>
@@ -915,7 +927,7 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
                   <td className="text-right text-sm tabular-nums px-3 py-3.5 text-muted-foreground border-r border-border/[0.06]">—</td>
                   <td className="px-2 py-3.5" />
                 </tr>
-              )}
+              ))}
 
               {/* TOTAL row */}
               {(() => {
