@@ -260,6 +260,7 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
 
   // Normalize: lowercase, remove punctuation, collapse whitespace
   const norm = (s: string) => (s || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim().replace(/\s+/g, " ");
+  const extractCampaignKey = (value: string) => norm(value).match(/(?:^|\s)(uy|ar|br)\s+([a-z]+)\s+ads\s*0*(\d+)\s+api\s*0*(\d+)(?:\s|$)/)?.slice(1).join("|") || "";
 
   // Match sales by CAMPAIGN NAME only (ignore creative/ad name)
   const matchSale = (s: any, _adNameNorm: string, adCampaignNorm: string, adName: string) => {
@@ -267,6 +268,9 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
     const campFull = norm(s.campaign || "");
     const adCamp = norm(adCampaignNorm);
     if (!campFull || !adCamp) return { match: false, byCreative: false };
+    const saleKey = extractCampaignKey(s.campaign || "");
+    const adKey = extractCampaignKey(adCampaignNorm || "");
+    if (saleKey && adKey && saleKey === adKey) return { match: true, byCreative: false };
     if (adCamp === campFull) return { match: true, byCreative: false };
     if (campFull.length > 5 && (adCamp.includes(campFull) || campFull.includes(adCamp))) return { match: true, byCreative: false };
     return { match: false, byCreative: false };
@@ -390,6 +394,8 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
     if (cFull === "sem criativo" || cFull === "não identificado" || cFull === "sem crtiativo" || cFull === "criativo não identificado") return true;
     if (cFull && allAdNames.includes(cFull)) return false;
     if (campFull && allCampaignNames.includes(campFull)) return false;
+    const saleKey = extractCampaignKey(s.campaign || "");
+    if (saleKey && allCampaignNames.some(cn => extractCampaignKey(cn) === saleKey)) return false;
     // Fuzzy match: check if any campaign/ad contains or is contained by the sale's names
     if (campFull && campFull.length > 5 && allCampaignNames.some(cn => cn.includes(campFull) || campFull.includes(cn))) return false;
     if (cFull && cFull.length > 5 && allCampaignNames.some(cn => cn.includes(cFull) || cFull.includes(cn))) return false;
