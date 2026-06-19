@@ -100,16 +100,32 @@ Deno.serve(async (req) => {
     };
 
     const rows = entries.map((entry: any) => {
-      const country = String(pick(entry, "country", "pais", "país") || "").toUpperCase().trim();
+      const campaign = String(pick(entry, "campaign", "campanha") || "");
+      let country = String(pick(entry, "country", "pais", "país") || "").toUpperCase().trim();
+
+      // Infer country from campaign prefix when missing or inconsistent with campaign name
+      // e.g. "(UY-PROSTA) ADS03" → UY, "(AR-ADULTO) ..." → AR, "(BR-...)" → BR
+      const campPrefix = campaign.match(/\(\s*(UY|AR|BR)[-\s]/i)?.[1]?.toUpperCase();
+      if (campPrefix && campPrefix !== country) {
+        console.log(`Country override: payload=${country} → campaign prefix=${campPrefix}`);
+        country = campPrefix;
+      }
+
       const isUY = country === "UY" || country === "URUGUAY" || country === "URUGUAI";
       const isAR = country === "AR" || country === "ARGENTINA";
-      const phoneRaw = pick(entry, "phone", "telefone", "celular", "whatsapp", "telephone");
+
+      // Use ad_title as creative fallback (full name needed for attribution; matcher requires >5 chars)
+      let creative = String(pick(entry, "creative", "criativo", "ad", "anuncio", "anúncio") || "").trim();
+      const adTitle = String(pick(entry, "ad_title", "ad_name", "adtitle") || "").trim();
+      if (adTitle && creative.length <= 5) creative = adTitle;
+
+      const phoneRaw = pick(entry, "phone", "telefone", "celular", "whatsapp", "telephone", "contact_phone");
       return {
         date: pick(entry, "date", "data") || nowBRT,
-        campaign: String(pick(entry, "campaign", "campanha") || ""),
-        revenue: toNumber(pick(entry, "revenue", "valor", "value", "price", "preco", "preço")),
+        campaign,
+        revenue: toNumber(pick(entry, "revenue", "valor", "value", "price", "preco", "preço", "amount")),
         sales: 1,
-        creative: String(pick(entry, "creative", "criativo", "ad", "anuncio", "anúncio") || ""),
+        creative,
         country,
         currency: isUY ? "UYU" : isAR ? "ARS" : "BRL",
         phone: phoneRaw ? String(phoneRaw).trim() : null,
