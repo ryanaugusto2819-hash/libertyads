@@ -116,8 +116,7 @@ Deno.serve(async (req) => {
         country = campPrefix;
       }
 
-      const isUY = country === "UY" || country === "URUGUAY" || country === "URUGUAI";
-      const isAR = country === "AR" || country === "ARGENTINA";
+      const payloadCurrency = String(pick(entry, "currency", "moeda") || "BRL").toUpperCase().trim();
 
       // Use ad_title as creative fallback (full name needed for attribution; matcher requires >5 chars)
       let creative = String(pick(entry, "creative", "criativo", "ad", "anuncio", "anúncio") || "").trim();
@@ -133,7 +132,9 @@ Deno.serve(async (req) => {
         sales: 1,
         creative,
         country,
-        currency: isUY ? "UYU" : isAR ? "ARS" : "BRL",
+        // The sale amount arrives in BRL even when the campaign/country is UY or AR.
+        // Respect the webhook currency and default to BRL instead of inferring pesos from country.
+        currency: ["BRL", "UYU", "ARS", "USD"].includes(payloadCurrency) ? payloadCurrency : "BRL",
         phone: phoneRaw ? String(phoneRaw).trim() : null,
       };
     });
