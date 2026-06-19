@@ -334,6 +334,15 @@ const Index = () => {
     return true;
   };
 
+  const isSaleNicho = (sale: any, nicho: "adulto" | "emagrecimento" | "prostata" | "diabetes") => {
+    const source = [sale.campaign || "", sale.creative || ""].join(" ").toLowerCase();
+    if (nicho === "adulto") return source.includes("adulto");
+    if (nicho === "emagrecimento") return source.includes("ema");
+    if (nicho === "prostata") return source.includes("prosta");
+    if (nicho === "diabetes") return source.includes("diabe");
+    return true;
+  };
+
   const filteredData = useMemo(() => {
     let result = data;
     if (countryFilter !== "all") result = result.filter(ad => isAdCountry(ad, countryFilter));
@@ -376,7 +385,7 @@ const Index = () => {
     }
     if (nichoFilter !== "all") {
       result = result.filter(s => {
-        return matchesFilteredSaleSource(s, filteredSaleSources);
+        return isSaleNicho(s, nichoFilter) || matchesFilteredSaleSource(s, filteredSaleSources);
       });
     }
     return result;
@@ -410,7 +419,7 @@ const Index = () => {
     }
     if (nichoFilter !== "all") {
       result = result.filter(s => {
-        return matchesFilteredSaleSource(s, filteredPrevSaleSources);
+        return isSaleNicho(s, nichoFilter) || matchesFilteredSaleSource(s, filteredPrevSaleSources);
       });
     }
     return result;
