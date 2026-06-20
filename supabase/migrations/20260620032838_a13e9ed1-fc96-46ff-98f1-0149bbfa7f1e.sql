@@ -1,0 +1,1 @@
+UPDATE public.webhook_sales SET date = '2026-06-19' WHERE date = '2026-06-20' AND created_at >= '2026-06-20 03:20:00+00' AND created_at <= '2026-06-20 03:24:00+00';
