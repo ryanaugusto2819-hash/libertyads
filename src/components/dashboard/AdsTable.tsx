@@ -469,7 +469,7 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
       });
     }
     return result;
-  }, [rows, searchQuery, countryFilter, sortKey, sortDir]);
+  }, [rows, searchQuery, countryFilter, statusFilter, getRowStatus, sortKey, sortDir]);
 
   const SortIcon = ({ col }: { col: SortKey }) => {
     if (sortKey !== col) return <ArrowUpDown className="h-3 w-3 opacity-30 ml-1 inline" />;
