@@ -8,8 +8,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-async function getAllTokens(preferred?: string): Promise<{ name: string; token: string }[]> {
-  const map: Record<string, string | undefined> = {
+async function getAllTokens(preferred: string | undefined, userId: string, isAdmin: boolean): Promise<{ name: string; token: string }[]> {
+  // Legacy env tokens belong to the platform owner (admin) only.
+  const map: Record<string, string | undefined> = isAdmin ? {
     main: Deno.env.get("META_ACCESS_TOKEN"),
     bm2: Deno.env.get("META_ACCESS_TOKEN_2"),
     bm3: Deno.env.get("META_ACCESS_TOKEN_3"),
@@ -22,8 +23,8 @@ async function getAllTokens(preferred?: string): Promise<{ name: string; token: 
     bm10: Deno.env.get("META_ACCESS_TOKEN_10") || Deno.env.get("META_ACCESS_TOKEN_9"),
     bm11: Deno.env.get("META_ACCESS_TOKEN_11"),
 
-  };
-  for (const d of await getDbAccountConfigs()) {
+  } : {};
+  for (const d of await getDbAccountConfigs(userId)) {
     if (!map[d.label]) map[d.label] = d.accessToken;
   }
   const order = preferred && map[preferred]
@@ -47,6 +48,9 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const caller = await getCaller(req);
+    if (!caller.userId || !caller.approved) return unauthorized(corsHeaders);
+
     if (req.method !== "POST") {
       return new Response(JSON.stringify({ error: "Method not allowed" }), {
         status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -61,7 +65,7 @@ serve(async (req) => {
       });
     }
 
-    const tokens = await getAllTokens(bm_account);
+    const tokens = await getAllTokens(bm_account, caller.userId, caller.isAdmin);
     if (tokens.length === 0) {
       return new Response(JSON.stringify({ error: "No Meta access tokens configured" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
