@@ -99,10 +99,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const supabase = admin;
 
     const toBrtDate = (value?: any) => {
       const d = value ? new Date(value) : new Date();
@@ -164,6 +161,7 @@ Deno.serve(async (req) => {
         // Respect the webhook currency and default to BRL instead of inferring pesos from country.
         currency: ["BRL", "UYU", "ARS", "PYG", "USD"].includes(payloadCurrency) ? payloadCurrency : "BRL",
         phone: phoneRaw ? String(phoneRaw).trim() : null,
+        user_id: ownerId,
       };
     });
 
