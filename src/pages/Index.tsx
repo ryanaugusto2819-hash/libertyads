@@ -321,32 +321,29 @@ const Index = () => {
     fetchData();
   }, [range, customRange, bmFilter]);
 
-  const isAdCountry = (ad: any, country: "uruguay" | "brasil" | "argentina" | "paraguai") => {
-    const { isAR, isUY, isBR, isPY } = getAdCountryFlags(ad);
-    if (country === "brasil") return isBR;
-    if (country === "argentina") return isAR;
-    if (country === "paraguai") return isPY;
-    return isUY || (!isAR && !isBR && !isPY);
+  const defaultCountryCode = countries[0]?.code ?? "";
+
+  const matchesCountryFilter = (source: string) => {
+    const target = countries.find((c) => c.code === countryFilter);
+    if (!target) return true;
+    if (matchesCountry(source, target)) return true;
+    if (target.code !== defaultCountryCode) return false;
+    // O país de menor ordem também recebe tudo que não tem sigla de outro país
+    return !countries.some((c) => c.code !== target.code && matchesCountry(source, c));
   };
 
-  const isAdNicho = (ad: any, nicho: "adulto" | "emagrecimento" | "prostata" | "diabetes") => {
-    const campaignName = (ad.campaign_name || "").toLowerCase();
-    const adName = (ad.ad_name || ad.name || "").toLowerCase();
-    if (nicho === "adulto") return campaignName.includes("adulto");
-    if (nicho === "emagrecimento") return campaignName.includes("ema");
-    if (nicho === "prostata") return campaignName.includes("prosta") || adName.includes("prosta");
-    if (nicho === "diabetes") return campaignName.includes("diabe") || adName.includes("diabe");
-    return true;
+  const isAdCountry = (ad: any) => matchesCountryFilter(adSource(ad));
+
+  const isAdNicho = (ad: any) => {
+    const source = [ad.campaign_name, ad.ad_name, ad.name].filter(Boolean).join(" ").toLowerCase();
+    return source.includes(nichoFilter.toLowerCase());
   };
 
-  const isSaleNicho = (sale: any, nicho: "adulto" | "emagrecimento" | "prostata" | "diabetes") => {
+  const isSaleNicho = (sale: any) => {
     const source = [sale.campaign || "", sale.creative || ""].join(" ").toLowerCase();
-    if (nicho === "adulto") return source.includes("adulto");
-    if (nicho === "emagrecimento") return source.includes("ema");
-    if (nicho === "prostata") return source.includes("prosta");
-    if (nicho === "diabetes") return source.includes("diabe");
-    return true;
+    return source.includes(nichoFilter.toLowerCase());
   };
+
 
   const filteredData = useMemo(() => {
     let result = data;
