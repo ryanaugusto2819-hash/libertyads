@@ -511,8 +511,51 @@ const Index = () => {
     return Array.from(map.values());
   }, [filteredPrevData]);
 
-  const kpi = useMemo(() => calcKpis(filteredData, filteredSalesData, currencyRates), [filteredData, filteredSalesData, currencyRates]);
-  const prevKpi = useMemo(() => calcKpis(filteredPrevData, filteredPrevSalesData, currencyRates), [filteredPrevData, filteredPrevSalesData, currencyRates]);
+  // Opções de campanha para o filtro da Visão Geral
+  const campaignOptions = useMemo(() => {
+    const set = new Set<string>();
+    filteredData.forEach((ad) => {
+      const name = (ad.campaign_name || "").trim();
+      if (name) set.add(name);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [filteredData]);
+
+  useEffect(() => {
+    if (campaignFilter !== "all" && !campaignOptions.includes(campaignFilter)) {
+      setCampaignFilter("all");
+    }
+  }, [campaignOptions, campaignFilter]);
+
+  const normName = (v: string) => (v || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+  const matchesCampaignFilter = (value: string) => {
+    if (campaignFilter === "all") return true;
+    const target = normName(campaignFilter);
+    const candidate = normName(value);
+    if (!candidate || !target) return false;
+    return candidate === target || candidate.includes(target) || target.includes(candidate);
+  };
+
+  const kpiAds = useMemo(
+    () => (campaignFilter === "all" ? filteredData : filteredData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
+    [filteredData, campaignFilter]
+  );
+  const kpiPrevAds = useMemo(
+    () => (campaignFilter === "all" ? filteredPrevData : filteredPrevData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
+    [filteredPrevData, campaignFilter]
+  );
+  const kpiSales = useMemo(
+    () => (campaignFilter === "all" ? filteredSalesData : filteredSalesData.filter((s) => matchesCampaignFilter(s.campaign || ""))),
+    [filteredSalesData, campaignFilter]
+  );
+  const kpiPrevSales = useMemo(
+    () => (campaignFilter === "all" ? filteredPrevSalesData : filteredPrevSalesData.filter((s) => matchesCampaignFilter(s.campaign || ""))),
+    [filteredPrevSalesData, campaignFilter]
+  );
+
+  const kpi = useMemo(() => calcKpis(kpiAds, kpiSales, currencyRates), [kpiAds, kpiSales, currencyRates]);
+  const prevKpi = useMemo(() => calcKpis(kpiPrevAds, kpiPrevSales, currencyRates), [kpiPrevAds, kpiPrevSales, currencyRates]);
 
   // Metrics where lower is better (invert trend colors)
   const spentTrend = calcTrend(kpi.totalSpent, prevKpi.totalSpent, true);
