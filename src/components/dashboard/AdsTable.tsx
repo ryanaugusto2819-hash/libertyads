@@ -425,12 +425,24 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
     }
   }, [sortKey]);
 
+  const getRowStatus = useCallback((ad: any) => {
+    const campaignIds: string[] = ad.campaignIds || (ad.campaign_id ? [ad.campaign_id] : []);
+    const statuses = campaignIds.map(cid => localStatuses[cid] || campaignBudgets[cid]?.status || "").filter(Boolean);
+    return statuses.includes("ACTIVE") ? "ACTIVE" : (statuses[0] || ad.status?.toUpperCase() || "");
+  }, [localStatuses, campaignBudgets]);
+
   const filteredRows = useMemo(() => {
     let result = rows.filter(r => r.spend > 0);
     if (countryFilter !== "all") {
       result = result.filter(r => {
         const { isAR, isBR, isUY } = getAdCountryFlags(r.ad);
         return isUY || (!isAR && !isBR);
+      });
+    }
+    if (statusFilter !== "all") {
+      result = result.filter(r => {
+        const st = getRowStatus(r.ad);
+        return statusFilter === "active" ? st === "ACTIVE" : st !== "ACTIVE";
       });
     }
     if (searchQuery.trim()) {
