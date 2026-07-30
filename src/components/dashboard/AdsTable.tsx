@@ -88,7 +88,10 @@ interface BudgetHistoryEntry {
   created_at: string;
 }
 
-const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdmin = false, campaignBudgets = {}, bmFilter }: AdsTableProps) => {
+const DEFAULT_RATES: Record<string, number> = { UYU: 7.93, ARS: 278.39, PYG: 1176.54 };
+
+const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdmin = false, campaignBudgets = {}, bmFilter, currencyRates }: AdsTableProps) => {
+  const rates = { ...DEFAULT_RATES, ...(currencyRates || {}) };
   const [adVideos, setAdVideos] = useState<Record<string, AdVideo>>({});
   const [uploading, setUploading] = useState<string | null>(null);
   const [previewVideo, setPreviewVideo] = useState<string | null>(null);
