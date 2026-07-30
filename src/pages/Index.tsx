@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { DollarSign, Users, Target, BarChart3, Percent, TrendingUp, Receipt, Wallet, Activity, RefreshCw, Eye, EyeOff, Clock, Shield, LogOut, Bot } from "lucide-react";
+import { DollarSign, Users, Target, BarChart3, Percent, TrendingUp, Receipt, Wallet, Activity, RefreshCw, Eye, EyeOff, Clock, Shield, LogOut, Bot, ChevronsUpDown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Checkbox } from "@/components/ui/checkbox";
 import { format, subDays, differenceInDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import KPICard from "@/components/dashboard/KPICard";
@@ -184,7 +186,7 @@ const Index = () => {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [nichoFilter, setNichoFilter] = useState<string>("all");
-  const [campaignFilter, setCampaignFilter] = useState<string>("all");
+  const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [bmFilter, setBmFilter] = useState<string>("all");
   const [campaignBudgets, setCampaignBudgets] = useState<Record<string, { daily_budget: number; name: string; status: string }>>({});
   const { niches, countries, bmAccounts, reload: reloadSettings } = useDashboardSettings();
@@ -522,36 +524,43 @@ const Index = () => {
   }, [filteredData]);
 
   useEffect(() => {
-    if (campaignFilter !== "all" && !campaignOptions.includes(campaignFilter)) {
-      setCampaignFilter("all");
-    }
-  }, [campaignOptions, campaignFilter]);
+    setSelectedCampaigns((prev) => {
+      const next = prev.filter((c) => campaignOptions.includes(c));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [campaignOptions]);
 
   const normName = (v: string) => (v || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
   const matchesCampaignFilter = (value: string) => {
-    if (campaignFilter === "all") return true;
-    const target = normName(campaignFilter);
+    if (selectedCampaigns.length === 0) return true;
     const candidate = normName(value);
-    if (!candidate || !target) return false;
-    return candidate === target || candidate.includes(target) || target.includes(candidate);
+    if (!candidate) return false;
+    return selectedCampaigns.some((sel) => {
+      const target = normName(sel);
+      if (!target) return false;
+      return candidate === target || candidate.includes(target) || target.includes(candidate);
+    });
   };
 
+  const toggleCampaign = (name: string) =>
+    setSelectedCampaigns((prev) => (prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]));
+
   const kpiAds = useMemo(
-    () => (campaignFilter === "all" ? filteredData : filteredData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
-    [filteredData, campaignFilter]
+    () => (selectedCampaigns.length === 0 ? filteredData : filteredData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
+    [filteredData, selectedCampaigns]
   );
   const kpiPrevAds = useMemo(
-    () => (campaignFilter === "all" ? filteredPrevData : filteredPrevData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
-    [filteredPrevData, campaignFilter]
+    () => (selectedCampaigns.length === 0 ? filteredPrevData : filteredPrevData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
+    [filteredPrevData, selectedCampaigns]
   );
   const kpiSales = useMemo(
-    () => (campaignFilter === "all" ? filteredSalesData : filteredSalesData.filter((s) => matchesCampaignFilter(s.campaign || ""))),
-    [filteredSalesData, campaignFilter]
+    () => (selectedCampaigns.length === 0 ? filteredSalesData : filteredSalesData.filter((s) => matchesCampaignFilter(s.campaign || ""))),
+    [filteredSalesData, selectedCampaigns]
   );
   const kpiPrevSales = useMemo(
-    () => (campaignFilter === "all" ? filteredPrevSalesData : filteredPrevSalesData.filter((s) => matchesCampaignFilter(s.campaign || ""))),
-    [filteredPrevSalesData, campaignFilter]
+    () => (selectedCampaigns.length === 0 ? filteredPrevSalesData : filteredPrevSalesData.filter((s) => matchesCampaignFilter(s.campaign || ""))),
+    [filteredPrevSalesData, selectedCampaigns]
   );
 
   const kpi = useMemo(() => calcKpis(kpiAds, kpiSales, currencyRates), [kpiAds, kpiSales, currencyRates]);
@@ -702,20 +711,39 @@ const Index = () => {
                 Visão Geral
               </h2>
             </div>
-            <Select value={campaignFilter} onValueChange={setCampaignFilter}>
-              <SelectTrigger className="h-8 w-[300px] max-w-full text-xs bg-muted/40">
-                <SelectValue placeholder="Todas as campanhas" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[320px]">
-                <SelectItem value="all" className="text-xs">Todas as campanhas</SelectItem>
-                {campaignOptions.map((name) => (
-                  <SelectItem key={name} value={name} className="text-xs">{name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {campaignFilter !== "all" && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="h-8 w-[320px] max-w-full px-3 rounded-md border border-border bg-muted/40 text-xs flex items-center justify-between gap-2 hover:bg-muted/60 transition-colors">
+                  <span className="truncate text-left">
+                    {selectedCampaigns.length === 0
+                      ? "Todas as campanhas"
+                      : selectedCampaigns.length === 1
+                      ? selectedCampaigns[0]
+                      : `${selectedCampaigns.length} campanhas selecionadas`}
+                  </span>
+                  <ChevronsUpDown className="h-3.5 w-3.5 opacity-60 flex-shrink-0" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[380px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar campanha..." className="h-9 text-xs" />
+                  <CommandList className="max-h-[300px]">
+                    <CommandEmpty className="py-4 text-center text-xs text-muted-foreground">Nenhuma campanha encontrada.</CommandEmpty>
+                    <CommandGroup>
+                      {campaignOptions.map((name) => (
+                        <CommandItem key={name} value={name} onSelect={() => toggleCampaign(name)} className="text-xs gap-2">
+                          <Checkbox checked={selectedCampaigns.includes(name)} className="h-3.5 w-3.5 pointer-events-none" />
+                          <span className="truncate">{name}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            {selectedCampaigns.length > 0 && (
               <button
-                onClick={() => setCampaignFilter("all")}
+                onClick={() => setSelectedCampaigns([])}
                 className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
               >
                 limpar
