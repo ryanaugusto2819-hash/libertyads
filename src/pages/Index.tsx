@@ -3,6 +3,7 @@ import { DollarSign, Users, Target, BarChart3, Percent, TrendingUp, Receipt, Wal
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, subDays, differenceInDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import KPICard from "@/components/dashboard/KPICard";
@@ -183,6 +184,7 @@ const Index = () => {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [nichoFilter, setNichoFilter] = useState<string>("all");
+  const [campaignFilter, setCampaignFilter] = useState<string>("all");
   const [bmFilter, setBmFilter] = useState<string>("all");
   const [campaignBudgets, setCampaignBudgets] = useState<Record<string, { daily_budget: number; name: string; status: string }>>({});
   const { niches, countries, bmAccounts, reload: reloadSettings } = useDashboardSettings();
@@ -509,8 +511,51 @@ const Index = () => {
     return Array.from(map.values());
   }, [filteredPrevData]);
 
-  const kpi = useMemo(() => calcKpis(filteredData, filteredSalesData, currencyRates), [filteredData, filteredSalesData, currencyRates]);
-  const prevKpi = useMemo(() => calcKpis(filteredPrevData, filteredPrevSalesData, currencyRates), [filteredPrevData, filteredPrevSalesData, currencyRates]);
+  // Opções de campanha para o filtro da Visão Geral
+  const campaignOptions = useMemo(() => {
+    const set = new Set<string>();
+    filteredData.forEach((ad) => {
+      const name = (ad.campaign_name || "").trim();
+      if (name) set.add(name);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [filteredData]);
+
+  useEffect(() => {
+    if (campaignFilter !== "all" && !campaignOptions.includes(campaignFilter)) {
+      setCampaignFilter("all");
+    }
+  }, [campaignOptions, campaignFilter]);
+
+  const normName = (v: string) => (v || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+  const matchesCampaignFilter = (value: string) => {
+    if (campaignFilter === "all") return true;
+    const target = normName(campaignFilter);
+    const candidate = normName(value);
+    if (!candidate || !target) return false;
+    return candidate === target || candidate.includes(target) || target.includes(candidate);
+  };
+
+  const kpiAds = useMemo(
+    () => (campaignFilter === "all" ? filteredData : filteredData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
+    [filteredData, campaignFilter]
+  );
+  const kpiPrevAds = useMemo(
+    () => (campaignFilter === "all" ? filteredPrevData : filteredPrevData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
+    [filteredPrevData, campaignFilter]
+  );
+  const kpiSales = useMemo(
+    () => (campaignFilter === "all" ? filteredSalesData : filteredSalesData.filter((s) => matchesCampaignFilter(s.campaign || ""))),
+    [filteredSalesData, campaignFilter]
+  );
+  const kpiPrevSales = useMemo(
+    () => (campaignFilter === "all" ? filteredPrevSalesData : filteredPrevSalesData.filter((s) => matchesCampaignFilter(s.campaign || ""))),
+    [filteredPrevSalesData, campaignFilter]
+  );
+
+  const kpi = useMemo(() => calcKpis(kpiAds, kpiSales, currencyRates), [kpiAds, kpiSales, currencyRates]);
+  const prevKpi = useMemo(() => calcKpis(kpiPrevAds, kpiPrevSales, currencyRates), [kpiPrevAds, kpiPrevSales, currencyRates]);
 
   // Metrics where lower is better (invert trend colors)
   const spentTrend = calcTrend(kpi.totalSpent, prevKpi.totalSpent, true);
@@ -650,12 +695,34 @@ const Index = () => {
 
         {/* Section: KPIs */}
         <section>
-          <div className="flex items-center gap-2.5 mb-5">
-            <div className="h-4 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, #a78bfa, #7c3aed)" }} />
-            <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-              Visão Geral
-            </h2>
+          <div className="flex items-center gap-3 mb-5 flex-wrap">
+            <div className="flex items-center gap-2.5">
+              <div className="h-4 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, #a78bfa, #7c3aed)" }} />
+              <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                Visão Geral
+              </h2>
+            </div>
+            <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+              <SelectTrigger className="h-8 w-[300px] max-w-full text-xs bg-muted/40">
+                <SelectValue placeholder="Todas as campanhas" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[320px]">
+                <SelectItem value="all" className="text-xs">Todas as campanhas</SelectItem>
+                {campaignOptions.map((name) => (
+                  <SelectItem key={name} value={name} className="text-xs">{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {campaignFilter !== "all" && (
+              <button
+                onClick={() => setCampaignFilter("all")}
+                className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
+              >
+                limpar
+              </button>
+            )}
           </div>
+
 
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
