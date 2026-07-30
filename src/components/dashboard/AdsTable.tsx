@@ -48,6 +48,7 @@ interface AdsTableProps {
   isAdmin?: boolean;
   campaignBudgets?: Record<string, { daily_budget: number; name: string; status: string }>;
   bmFilter?: string;
+  currencyRates?: Record<string, number>;
 }
 const fmt = (n: number | null | undefined) => {
   if (n == null || isNaN(n)) return "0,00";
@@ -88,7 +89,10 @@ interface BudgetHistoryEntry {
   created_at: string;
 }
 
-const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdmin = false, campaignBudgets = {}, bmFilter }: AdsTableProps) => {
+const DEFAULT_RATES: Record<string, number> = { UYU: 7.93, ARS: 278.39, PYG: 1176.54 };
+
+const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdmin = false, campaignBudgets = {}, bmFilter, currencyRates }: AdsTableProps) => {
+  const rates = { ...DEFAULT_RATES, ...(currencyRates || {}) };
   const [adVideos, setAdVideos] = useState<Record<string, AdVideo>>({});
   const [uploading, setUploading] = useState<string | null>(null);
   const [previewVideo, setPreviewVideo] = useState<string | null>(null);
@@ -293,11 +297,10 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
   const convertRev = (s: any) => {
     const raw = Number(s.revenue || 0);
     const currency = (s.currency || "").toUpperCase();
-    if (currency === "UYU") return raw / 7.93;
-    if (currency === "ARS") return raw / 278.39;
-    if (currency === "PYG") return raw / 1176.54;
-    return raw;
+    const rate = Number(rates[currency] || 0);
+    return rate > 0 ? raw / rate : raw;
   };
+
 
   const rows = ads.map((ad) => {
     const adName = ad.ad_name || ad.name || "";
@@ -362,14 +365,8 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
       const spend = ad.spend ?? ad.spent ?? 0;
       const leads = ad.leads ?? 0;
       const sales = matchedSales.reduce((sum, s) => sum + Number(s.sales || 0), 0);
-      const revenue = matchedSales.reduce((sum, s) => {
-        const raw = Number(s.revenue || 0);
-        const currency = (s.currency || "").toUpperCase();
-        if (currency === "UYU") return sum + raw / 7.93;
-        if (currency === "ARS") return sum + raw / 278.39;
-        if (currency === "PYG") return sum + raw / 1176.54;
-        return sum + raw;
-      }, 0);
+      const revenue = matchedSales.reduce((sum, s) => sum + convertRev(s), 0);
+
       const cpl = ad.costPerLead ?? ad.cpl ?? (leads > 0 ? spend / leads : 0);
       const cpa = ad.cpa ?? (sales > 0 ? spend / sales : 0);
       const convRate = leads > 0 ? (sales / leads) * 100 : 0;
@@ -407,14 +404,8 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
     return true;
   });
   const uSales = unmatchedSales.reduce((sum, s) => sum + Number(s.sales || 0), 0);
-  const uRevenue = unmatchedSales.reduce((sum, s) => {
-    const raw = Number(s.revenue || 0);
-    const currency = (s.currency || "").toUpperCase();
-    if (currency === "UYU") return sum + raw / 7.93;
-    if (currency === "ARS") return sum + raw / 278.39;
-        if (currency === "PYG") return sum + raw / 1176.54;
-    return sum + raw;
-  }, 0);
+  const uRevenue = unmatchedSales.reduce((sum, s) => sum + convertRev(s), 0);
+
   const unmatchedGroups = Array.from(unmatchedSales.reduce((map, s) => {
     const key = (s.campaign || s.creative || "Sem campanha").trim() || "Sem campanha";
     const current = map.get(key) || { label: key, sales: 0, revenue: 0 };

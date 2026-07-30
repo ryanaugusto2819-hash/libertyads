@@ -10,6 +10,8 @@ import DateFilter from "@/components/dashboard/DateFilter";
 import AdsTable from "@/components/dashboard/AdsTable";
 import SpendChart from "@/components/dashboard/SpendChart";
 import WebhookHistory from "@/components/dashboard/WebhookHistory";
+import SettingsDialog from "@/components/dashboard/SettingsDialog";
+import { useDashboardSettings } from "@/hooks/useDashboardSettings";
 
 interface SaleEntry {
   date: string;
@@ -57,6 +59,14 @@ const ARS_TO_BRL = 278.39;
 const PYG_TO_BRL = 1176.54;
 const USD_TO_BRL = 5.10;
 
+const DEFAULT_RATES: Record<string, number> = {
+  UYU: UYU_TO_BRL,
+  ARS: ARS_TO_BRL,
+  PYG: PYG_TO_BRL,
+};
+
+const STATIC_BMS = ["bm1", "bm2", "bm3", "bm4", "bm5", "bm6", "bm7", "bm8", "bm9", "bm10", "bm11"];
+
 const applyUsdConversion = (items: any[]) =>
   items.map((item) => {
     if (item.bm_account !== "bm4" && item.bm_account !== "bm5") return item;
@@ -69,20 +79,18 @@ const applyUsdConversion = (items: any[]) =>
     };
   });
 
-const convertRevenue = (sale: SaleEntry) => {
+const convertRevenue = (sale: SaleEntry, rates: Record<string, number>) => {
   const raw = Number(sale.revenue || 0);
   const currency = (sale.currency || "").toUpperCase();
-  if (currency === "UYU") return raw / UYU_TO_BRL;
-  if (currency === "ARS") return raw / ARS_TO_BRL;
-  if (currency === "PYG") return raw / PYG_TO_BRL;
-  return raw; // BRL by default
+  const rate = Number(rates[currency] || 0);
+  return rate > 0 ? raw / rate : raw;
 };
 
-const calcKpis = (data: any[], salesData: SaleEntry[]) => {
+const calcKpis = (data: any[], salesData: SaleEntry[], rates: Record<string, number> = DEFAULT_RATES) => {
   const totalSpent = data.reduce((sum, d) => sum + Number(d.spend || 0), 0);
   const totalLeads = data.reduce((sum, d) => sum + Number(d.leads || 0), 0);
   const costPerLead = totalLeads > 0 ? totalSpent / totalLeads : 0;
-  const totalRevenue = salesData.reduce((sum, s) => sum + convertRevenue(s), 0);
+  const totalRevenue = salesData.reduce((sum, s) => sum + convertRevenue(s, rates), 0);
   const totalSales = salesData.reduce((sum, s) => sum + Number(s.sales || 0), 0);
   const conversionRate = totalLeads > 0 ? (totalSales / totalLeads) * 100 : 0;
   const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
@@ -95,6 +103,7 @@ const calcKpis = (data: any[], salesData: SaleEntry[]) => {
 
   return { totalSpent, totalLeads, costPerLead, cpa, roi, conversionRate, averageTicket, totalSales, totalRevenue, lucro70, lucro60, lucro50, lucro40 };
 };
+
 
 const calcTrend = (current: number, previous: number, invertColors = false) => {
   if (previous === 0 && current === 0) return { trend: "0%", trendUp: false, trendNeutral: true };
@@ -122,31 +131,30 @@ const normalizeMetaErrorMessage = (message: string) => {
   return message;
 };
 
-const hasCountryTag = (value: string, tag: "BR" | "UY" | "AR" | "PY") => {
+const hasCountryTag = (value: string, tag: string) => {
   const normalized = (value || "").toUpperCase();
-  return new RegExp(`(^|[^A-Z0-9])${tag}([^A-Z0-9]|$)`).test(normalized);
+  const safeTag = tag.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!safeTag) return false;
+  return new RegExp(`(^|[^A-Z0-9])${safeTag}([^A-Z0-9]|$)`).test(normalized);
 };
 
-const getAdCountryFlags = (ad: any) => {
-  const source = [ad.campaign_name, ad.ad_name, ad.name].filter(Boolean).join(" ");
-  return {
-    isPY: hasCountryTag(source, "PY") || /PARAGUAI|PARAGUAY/i.test(source),
-    isAR: hasCountryTag(source, "AR") || /ARGENTINA/i.test(source),
-    isUY: hasCountryTag(source, "UY") || /URUGUAI|URUGUAY/i.test(source),
-    isBR: hasCountryTag(source, "BR") || /BRASIL|BRAZIL/i.test(source),
-  };
+const COUNTRY_ALIASES: Record<string, RegExp> = {
+  BR: /BRASIL|BRAZIL/i,
+  UY: /URUGUAI|URUGUAY/i,
+  AR: /ARGENTINA/i,
+  PY: /PARAGUAI|PARAGUAY/i,
 };
 
-const getSaleCountryFlags = (sale: any) => {
-  const country = (sale.country || "").toLowerCase().trim();
-  const source = [sale.creative, sale.campaign].filter(Boolean).join(" ");
-  return {
-    isPY: country.includes("paragua") || country === "py" || hasCountryTag(source, "PY"),
-    isAR: country.includes("argentin") || country === "ar" || hasCountryTag(source, "AR"),
-    isUY: country.includes("uruguai") || country.includes("uruguay") || country === "uy" || hasCountryTag(source, "UY"),
-    isBR: country.includes("brasil") || country.includes("brazil") || country === "br" || hasCountryTag(source, "BR"),
-  };
+const adSource = (ad: any) => [ad.campaign_name, ad.ad_name, ad.name].filter(Boolean).join(" ");
+const saleSource = (sale: any) => [sale.creative, sale.campaign, sale.country].filter(Boolean).join(" ");
+
+const matchesCountry = (source: string, country: { code: string; name: string }) => {
+  if (hasCountryTag(source, country.code)) return true;
+  if (COUNTRY_ALIASES[country.code.toUpperCase()]?.test(source)) return true;
+  const name = (country.name || "").trim();
+  return name.length > 2 && new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(source);
 };
+
 
 const SkeletonCard = () => (
   <div className="glass-card p-5 relative overflow-hidden">
@@ -173,10 +181,19 @@ const Index = () => {
   const [error, setError] = useState<string | null>(null);
   const [hideValues, setHideValues] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [countryFilter, setCountryFilter] = useState<"all" | "uruguay" | "brasil" | "argentina" | "paraguai">("all");
-  const [nichoFilter, setNichoFilter] = useState<"all" | "adulto" | "emagrecimento" | "prostata" | "diabetes">("all");
-  const [bmFilter, setBmFilter] = useState<"all" | "bm1" | "bm2" | "bm3">("all");
+  const [countryFilter, setCountryFilter] = useState<string>("all");
+  const [nichoFilter, setNichoFilter] = useState<string>("all");
+  const [bmFilter, setBmFilter] = useState<string>("all");
   const [campaignBudgets, setCampaignBudgets] = useState<Record<string, { daily_budget: number; name: string; status: string }>>({});
+  const { niches, countries, bmAccounts, reload: reloadSettings } = useDashboardSettings();
+
+  const currencyRates = useMemo(
+    () => ({
+      ...DEFAULT_RATES,
+      ...Object.fromEntries(countries.map((c) => [c.currency_code.toUpperCase(), Number(c.rate_to_brl) || 1])),
+    }),
+    [countries]
+  );
 
   const fetchData = async () => {
     try {
@@ -321,39 +338,36 @@ const Index = () => {
     fetchData();
   }, [range, customRange, bmFilter]);
 
-  const isAdCountry = (ad: any, country: "uruguay" | "brasil" | "argentina" | "paraguai") => {
-    const { isAR, isUY, isBR, isPY } = getAdCountryFlags(ad);
-    if (country === "brasil") return isBR;
-    if (country === "argentina") return isAR;
-    if (country === "paraguai") return isPY;
-    return isUY || (!isAR && !isBR && !isPY);
+  const defaultCountryCode = countries[0]?.code ?? "";
+
+  const matchesCountryFilter = (source: string) => {
+    const target = countries.find((c) => c.code === countryFilter);
+    if (!target) return true;
+    if (matchesCountry(source, target)) return true;
+    if (target.code !== defaultCountryCode) return false;
+    // O país de menor ordem também recebe tudo que não tem sigla de outro país
+    return !countries.some((c) => c.code !== target.code && matchesCountry(source, c));
   };
 
-  const isAdNicho = (ad: any, nicho: "adulto" | "emagrecimento" | "prostata" | "diabetes") => {
-    const campaignName = (ad.campaign_name || "").toLowerCase();
-    const adName = (ad.ad_name || ad.name || "").toLowerCase();
-    if (nicho === "adulto") return campaignName.includes("adulto");
-    if (nicho === "emagrecimento") return campaignName.includes("ema");
-    if (nicho === "prostata") return campaignName.includes("prosta") || adName.includes("prosta");
-    if (nicho === "diabetes") return campaignName.includes("diabe") || adName.includes("diabe");
-    return true;
+  const isAdCountry = (ad: any) => matchesCountryFilter(adSource(ad));
+
+  const isAdNicho = (ad: any) => {
+    const source = [ad.campaign_name, ad.ad_name, ad.name].filter(Boolean).join(" ").toLowerCase();
+    return source.includes(nichoFilter.toLowerCase());
   };
 
-  const isSaleNicho = (sale: any, nicho: "adulto" | "emagrecimento" | "prostata" | "diabetes") => {
+  const isSaleNicho = (sale: any) => {
     const source = [sale.campaign || "", sale.creative || ""].join(" ").toLowerCase();
-    if (nicho === "adulto") return source.includes("adulto");
-    if (nicho === "emagrecimento") return source.includes("ema");
-    if (nicho === "prostata") return source.includes("prosta");
-    if (nicho === "diabetes") return source.includes("diabe");
-    return true;
+    return source.includes(nichoFilter.toLowerCase());
   };
+
 
   const filteredData = useMemo(() => {
     let result = data;
-    if (countryFilter !== "all") result = result.filter(ad => isAdCountry(ad, countryFilter));
-    if (nichoFilter !== "all") result = result.filter(ad => isAdNicho(ad, nichoFilter));
+    if (countryFilter !== "all") result = result.filter(ad => isAdCountry(ad));
+    if (nichoFilter !== "all") result = result.filter(ad => isAdNicho(ad));
     return result;
-  }, [data, countryFilter, nichoFilter]);
+  }, [data, countryFilter, nichoFilter, countries]);
 
   // Get ad/campaign names from filtered data to filter sales by nicho
   const filteredSaleSources = useMemo(() => {
@@ -381,28 +395,21 @@ const Index = () => {
   const filteredSalesData = useMemo(() => {
     let result = salesData;
     if (countryFilter !== "all") {
-      result = result.filter(s => {
-        const { isAR, isUY, isBR, isPY } = getSaleCountryFlags(s);
-        if (countryFilter === "brasil") return isBR;
-        if (countryFilter === "argentina") return isAR;
-        if (countryFilter === "paraguai") return isPY;
-        return isUY || (!isAR && !isBR && !isPY);
-      });
+      result = result.filter(s => matchesCountryFilter(saleSource(s)));
     }
     if (nichoFilter !== "all") {
-      result = result.filter(s => {
-        return isSaleNicho(s, nichoFilter) || matchesFilteredSaleSource(s, filteredSaleSources);
-      });
+      result = result.filter(s => isSaleNicho(s) || matchesFilteredSaleSource(s, filteredSaleSources));
     }
     return result;
-  }, [salesData, countryFilter, nichoFilter, filteredSaleSources]);
+  }, [salesData, countryFilter, nichoFilter, filteredSaleSources, countries]);
 
   const filteredPrevData = useMemo(() => {
     let result = prevData;
-    if (countryFilter !== "all") result = result.filter(ad => isAdCountry(ad, countryFilter));
-    if (nichoFilter !== "all") result = result.filter(ad => isAdNicho(ad, nichoFilter));
+    if (countryFilter !== "all") result = result.filter(ad => isAdCountry(ad));
+    if (nichoFilter !== "all") result = result.filter(ad => isAdNicho(ad));
     return result;
-  }, [prevData, countryFilter, nichoFilter]);
+  }, [prevData, countryFilter, nichoFilter, countries]);
+
 
   const filteredPrevSaleSources = useMemo(() => {
     return new Set(
@@ -416,21 +423,14 @@ const Index = () => {
   const filteredPrevSalesData = useMemo(() => {
     let result = prevSalesData;
     if (countryFilter !== "all") {
-      result = result.filter(s => {
-        const { isAR, isUY, isBR, isPY } = getSaleCountryFlags(s);
-        if (countryFilter === "brasil") return isBR;
-        if (countryFilter === "argentina") return isAR;
-        if (countryFilter === "paraguai") return isPY;
-        return isUY || (!isAR && !isBR && !isPY);
-      });
+      result = result.filter(s => matchesCountryFilter(saleSource(s)));
     }
     if (nichoFilter !== "all") {
-      result = result.filter(s => {
-        return isSaleNicho(s, nichoFilter) || matchesFilteredSaleSource(s, filteredPrevSaleSources);
-      });
+      result = result.filter(s => isSaleNicho(s) || matchesFilteredSaleSource(s, filteredPrevSaleSources));
     }
     return result;
-  }, [prevSalesData, countryFilter, nichoFilter, filteredPrevSaleSources]);
+  }, [prevSalesData, countryFilter, nichoFilter, filteredPrevSaleSources, countries]);
+
 
   const deduplicatedAds = useMemo(() => {
     const map = new Map<string, any>();
@@ -509,8 +509,8 @@ const Index = () => {
     return Array.from(map.values());
   }, [filteredPrevData]);
 
-  const kpi = useMemo(() => calcKpis(filteredData, filteredSalesData), [filteredData, filteredSalesData]);
-  const prevKpi = useMemo(() => calcKpis(filteredPrevData, filteredPrevSalesData), [filteredPrevData, filteredPrevSalesData]);
+  const kpi = useMemo(() => calcKpis(filteredData, filteredSalesData, currencyRates), [filteredData, filteredSalesData, currencyRates]);
+  const prevKpi = useMemo(() => calcKpis(filteredPrevData, filteredPrevSalesData, currencyRates), [filteredPrevData, filteredPrevSalesData, currencyRates]);
 
   // Metrics where lower is better (invert trend colors)
   const spentTrend = calcTrend(kpi.totalSpent, prevKpi.totalSpent, true);
@@ -558,38 +558,43 @@ const Index = () => {
             <Tabs value={bmFilter} onValueChange={(v) => setBmFilter(v as any)}>
               <TabsList className="h-8">
                 <TabsTrigger value="all" className="text-xs px-3 h-6">Todas</TabsTrigger>
-                <TabsTrigger value="bm1" className="text-xs px-3 h-6">BM 1</TabsTrigger>
-                <TabsTrigger value="bm2" className="text-xs px-3 h-6">BM 2</TabsTrigger>
-                <TabsTrigger value="bm3" className="text-xs px-3 h-6">BM 3</TabsTrigger>
-                <TabsTrigger value="bm4" className="text-xs px-3 h-6">BM 4</TabsTrigger>
-                <TabsTrigger value="bm5" className="text-xs px-3 h-6">BM 5</TabsTrigger>
-                <TabsTrigger value="bm6" className="text-xs px-3 h-6">BM 6</TabsTrigger>
-                <TabsTrigger value="bm7" className="text-xs px-3 h-6">BM 7</TabsTrigger>
-                <TabsTrigger value="bm8" className="text-xs px-3 h-6">BM 8</TabsTrigger>
-                <TabsTrigger value="bm9" className="text-xs px-3 h-6">BM 9</TabsTrigger>
-                <TabsTrigger value="bm10" className="text-xs px-3 h-6">BM 10</TabsTrigger>
-                <TabsTrigger value="bm11" className="text-xs px-3 h-6">BM 11</TabsTrigger>
+                {STATIC_BMS.map((slug) => (
+                  <TabsTrigger key={slug} value={slug} className="text-xs px-3 h-6">
+                    {slug.replace("bm", "BM ")}
+                  </TabsTrigger>
+                ))}
+                {bmAccounts.map((b) => (
+                  <TabsTrigger key={b.id} value={b.slug} className="text-xs px-3 h-6">{b.label}</TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+            <Tabs value={countryFilter} onValueChange={(v) => setCountryFilter(v)}>
+              <TabsList className="h-8">
+                <TabsTrigger value="all" className="text-xs px-3 h-6">Todos</TabsTrigger>
+                {countries.map((c) => (
+                  <TabsTrigger key={c.id} value={c.code} className="text-xs px-3 h-6">
+                    {c.flag} {c.name}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+            <Tabs value={nichoFilter} onValueChange={(v) => setNichoFilter(v)}>
+              <TabsList className="h-8">
+                <TabsTrigger value="all" className="text-xs px-3 h-6">Todos</TabsTrigger>
+                {niches.map((n) => (
+                  <TabsTrigger key={n.id} value={n.keyword} className="text-xs px-3 h-6">{n.name}</TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+            {isAdmin && (
+              <SettingsDialog
+                niches={niches}
+                countries={countries}
+                bmAccounts={bmAccounts}
+                onChanged={reloadSettings}
+              />
+            )}
 
-              </TabsList>
-            </Tabs>
-            <Tabs value={countryFilter} onValueChange={(v) => setCountryFilter(v as any)}>
-              <TabsList className="h-8">
-                <TabsTrigger value="all" className="text-xs px-3 h-6">Todos</TabsTrigger>
-                <TabsTrigger value="uruguay" className="text-xs px-3 h-6">🇺🇾 Uruguai</TabsTrigger>
-                <TabsTrigger value="brasil" className="text-xs px-3 h-6">🇧🇷 Brasil</TabsTrigger>
-                <TabsTrigger value="argentina" className="text-xs px-3 h-6">🇦🇷 Argentina</TabsTrigger>
-                <TabsTrigger value="paraguai" className="text-xs px-3 h-6">🇵🇾 Paraguai</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            <Tabs value={nichoFilter} onValueChange={(v) => setNichoFilter(v as any)}>
-              <TabsList className="h-8">
-                <TabsTrigger value="all" className="text-xs px-3 h-6">Todos</TabsTrigger>
-                <TabsTrigger value="adulto" className="text-xs px-3 h-6">Adulto</TabsTrigger>
-                <TabsTrigger value="emagrecimento" className="text-xs px-3 h-6">Emagrecimento</TabsTrigger>
-                <TabsTrigger value="prostata" className="text-xs px-3 h-6">Próstata</TabsTrigger>
-                <TabsTrigger value="diabetes" className="text-xs px-3 h-6">Diabetes</TabsTrigger>
-              </TabsList>
-            </Tabs>
             <button
               onClick={fetchData}
               disabled={loading}
@@ -729,7 +734,7 @@ const Index = () => {
                 Detalhamento
               </h2>
             </div>
-            <AdsTable ads={deduplicatedAds} salesData={filteredSalesData} prevAds={deduplicatedPrevAds} prevSalesData={filteredPrevSalesData} isAdmin={isAdmin} campaignBudgets={campaignBudgets} bmFilter={bmFilter} />
+            <AdsTable ads={deduplicatedAds} salesData={filteredSalesData} prevAds={deduplicatedPrevAds} prevSalesData={filteredPrevSalesData} isAdmin={isAdmin} campaignBudgets={campaignBudgets} bmFilter={bmFilter} currencyRates={currencyRates} />
           </section>
         )}
 

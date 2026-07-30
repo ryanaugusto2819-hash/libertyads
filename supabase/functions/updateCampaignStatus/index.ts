@@ -1,3 +1,4 @@
+import { getDbAccountConfigs } from "../_shared/bmAccounts.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -6,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function getAllTokens(preferred?: string): { name: string; token: string }[] {
+async function getAllTokens(preferred?: string): Promise<{ name: string; token: string }[]> {
   const map: Record<string, string | undefined> = {
     main: Deno.env.get("META_ACCESS_TOKEN"),
     bm2: Deno.env.get("META_ACCESS_TOKEN_2"),
@@ -21,6 +22,9 @@ function getAllTokens(preferred?: string): { name: string; token: string }[] {
     bm11: Deno.env.get("META_ACCESS_TOKEN_11"),
 
   };
+  for (const d of await getDbAccountConfigs()) {
+    if (!map[d.label]) map[d.label] = d.accessToken;
+  }
   const order = preferred && map[preferred]
     ? [preferred, ...Object.keys(map).filter((k) => k !== preferred)]
     : Object.keys(map);
@@ -59,7 +63,7 @@ serve(async (req) => {
       });
     }
 
-    const tokens = getAllTokens(bm_account);
+    const tokens = await getAllTokens(bm_account);
     if (tokens.length === 0) {
       return new Response(JSON.stringify({ error: "No Meta access tokens configured" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },

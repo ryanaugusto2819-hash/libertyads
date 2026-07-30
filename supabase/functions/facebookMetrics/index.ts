@@ -1,3 +1,4 @@
+import { getDbAccountConfigs } from "../_shared/bmAccounts.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -199,6 +200,17 @@ async function fetchAccountMetrics(
   return { data: processed, connected: true };
 }
 
+async function getAllConfigs(): Promise<AccountConfig[]> {
+  const configs = getAccountConfigs();
+  const dbConfigs = await getDbAccountConfigs();
+  for (const d of dbConfigs) {
+    if (!configs.some((c) => c.label === d.label)) {
+      configs.push({ label: d.label, accessToken: d.accessToken, adAccount: d.adAccount });
+    }
+  }
+  return configs;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
@@ -214,7 +226,7 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
 
-    const allConfigs = getAccountConfigs();
+    const allConfigs = await getAllConfigs();
     if (allConfigs.length === 0)
       return new Response(JSON.stringify({ error: "No Meta accounts configured" }), {
         status: 500,
