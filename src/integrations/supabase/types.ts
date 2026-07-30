@@ -121,9 +121,44 @@ export type Database = {
         }
         Relationships: []
       }
-      bm_accounts: {
+      bm_account_secrets: {
         Row: {
           access_token: string | null
+          bm_account_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          bm_account_id: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          bm_account_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bm_account_secrets_bm_account_id_fkey"
+            columns: ["bm_account_id"]
+            isOneToOne: true
+            referencedRelation: "bm_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bm_account_secrets_bm_account_id_fkey"
+            columns: ["bm_account_id"]
+            isOneToOne: true
+            referencedRelation: "bm_accounts_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bm_accounts: {
+        Row: {
           ad_account_id: string
           created_at: string
           currency: string
@@ -135,7 +170,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          access_token?: string | null
           ad_account_id: string
           created_at?: string
           currency?: string
@@ -147,7 +181,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          access_token?: string | null
           ad_account_id?: string
           created_at?: string
           currency?: string
