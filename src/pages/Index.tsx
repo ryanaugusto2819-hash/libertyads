@@ -413,21 +413,14 @@ const Index = () => {
   const filteredPrevSalesData = useMemo(() => {
     let result = prevSalesData;
     if (countryFilter !== "all") {
-      result = result.filter(s => {
-        const { isAR, isUY, isBR, isPY } = getSaleCountryFlags(s);
-        if (countryFilter === "brasil") return isBR;
-        if (countryFilter === "argentina") return isAR;
-        if (countryFilter === "paraguai") return isPY;
-        return isUY || (!isAR && !isBR && !isPY);
-      });
+      result = result.filter(s => matchesCountryFilter(saleSource(s)));
     }
     if (nichoFilter !== "all") {
-      result = result.filter(s => {
-        return isSaleNicho(s, nichoFilter) || matchesFilteredSaleSource(s, filteredPrevSaleSources);
-      });
+      result = result.filter(s => isSaleNicho(s) || matchesFilteredSaleSource(s, filteredPrevSaleSources));
     }
     return result;
-  }, [prevSalesData, countryFilter, nichoFilter, filteredPrevSaleSources]);
+  }, [prevSalesData, countryFilter, nichoFilter, filteredPrevSaleSources, countries]);
+
 
   const deduplicatedAds = useMemo(() => {
     const map = new Map<string, any>();
