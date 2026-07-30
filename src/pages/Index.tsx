@@ -754,10 +754,19 @@ const Index = () => {
 
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-              {Array.from({ length: 9 }).map((_, i) => <SkeletonCard key={i} />)}
+              {Array.from({ length: 10 }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div className="animate-fade-in-up">
+                <KPICard
+                  title="Período"
+                  value={periodLabel}
+                  icon={CalendarRange}
+                  variant="purple"
+                  previousValue={periodSubLabel}
+                />
+              </div>
               <div className="animate-fade-in-up" style={{ animationDelay: "0ms" }}>
                 <KPICard title="Valor Gasto" value={`R$ ${fmt(kpi.totalSpent)}`} icon={DollarSign} variant="blue"
                   trend={spentTrend.trend} trendUp={spentTrend.trendUp} trendNeutral={spentTrend.trendNeutral}
