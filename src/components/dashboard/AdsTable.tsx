@@ -293,11 +293,10 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
   const convertRev = (s: any) => {
     const raw = Number(s.revenue || 0);
     const currency = (s.currency || "").toUpperCase();
-    if (currency === "UYU") return raw / 7.93;
-    if (currency === "ARS") return raw / 278.39;
-    if (currency === "PYG") return raw / 1176.54;
-    return raw;
+    const rate = Number(rates[currency] || 0);
+    return rate > 0 ? raw / rate : raw;
   };
+
 
   const rows = ads.map((ad) => {
     const adName = ad.ad_name || ad.name || "";
