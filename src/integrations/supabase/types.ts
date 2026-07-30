@@ -121,6 +121,45 @@ export type Database = {
         }
         Relationships: []
       }
+      bm_accounts: {
+        Row: {
+          access_token: string | null
+          ad_account_id: string
+          created_at: string
+          currency: string
+          id: string
+          is_active: boolean
+          label: string
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          ad_account_id: string
+          created_at?: string
+          currency?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          ad_account_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       campaign_budget_history: {
         Row: {
           ad_name: string | null
@@ -208,6 +247,75 @@ export type Database = {
           target_ctr?: number | null
           target_roas?: number | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      countries: {
+        Row: {
+          code: string
+          created_at: string
+          currency_code: string
+          flag: string
+          id: string
+          is_active: boolean
+          name: string
+          rate_to_brl: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          currency_code?: string
+          flag?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          rate_to_brl?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          currency_code?: string
+          flag?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          rate_to_brl?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      niches: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          keyword: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          keyword: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          keyword?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -430,7 +538,45 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      bm_accounts_public: {
+        Row: {
+          ad_account_id: string | null
+          created_at: string | null
+          currency: string | null
+          has_token: boolean | null
+          id: string | null
+          is_active: boolean | null
+          label: string | null
+          slug: string | null
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          ad_account_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          has_token?: never
+          id?: string | null
+          is_active?: boolean | null
+          label?: string | null
+          slug?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          ad_account_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          has_token?: never
+          id?: string | null
+          is_active?: boolean | null
+          label?: string | null
+          slug?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
