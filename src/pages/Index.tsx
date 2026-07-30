@@ -695,12 +695,34 @@ const Index = () => {
 
         {/* Section: KPIs */}
         <section>
-          <div className="flex items-center gap-2.5 mb-5">
-            <div className="h-4 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, #a78bfa, #7c3aed)" }} />
-            <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-              Visão Geral
-            </h2>
+          <div className="flex items-center gap-3 mb-5 flex-wrap">
+            <div className="flex items-center gap-2.5">
+              <div className="h-4 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, #a78bfa, #7c3aed)" }} />
+              <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                Visão Geral
+              </h2>
+            </div>
+            <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+              <SelectTrigger className="h-8 w-[300px] max-w-full text-xs bg-muted/40">
+                <SelectValue placeholder="Todas as campanhas" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[320px]">
+                <SelectItem value="all" className="text-xs">Todas as campanhas</SelectItem>
+                {campaignOptions.map((name) => (
+                  <SelectItem key={name} value={name} className="text-xs">{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {campaignFilter !== "all" && (
+              <button
+                onClick={() => setCampaignFilter("all")}
+                className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
+              >
+                limpar
+              </button>
+            )}
           </div>
+
 
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
