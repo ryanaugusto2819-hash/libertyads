@@ -14,60 +14,75 @@ interface KPICardProps {
 }
 
 const variantMap: Record<string, {
-  glow: string;
-  accentBar: string;
+  neonCard: string;
   iconBox: string;
   iconColor: string;
-  trendBg: string;
-  trendText: string;
+  accentColor: string;
+  trendUpStyle: string;
+  trendDownStyle: string;
+  // Legacy compat
+  glow: string;
+  accentBar: string;
 }> = {
   blue: {
+    neonCard: "neon-card-cyan",
+    iconBox: "icon-box icon-box-cyan",
+    iconColor: "text-cyan-400",
+    accentColor: "#00e5ff",
+    trendUpStyle: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
+    trendDownStyle: "bg-red-500/10 text-red-400 border-red-500/20",
     glow: "metric-glow-blue",
     accentBar: "accent-bar-blue",
-    iconBox: "icon-box icon-box-blue",
-    iconColor: "text-blue-400",
-    trendBg: "bg-blue-500/10",
-    trendText: "text-blue-400",
   },
   green: {
+    neonCard: "neon-card-green",
+    iconBox: "icon-box icon-box-green",
+    iconColor: "text-green-400",
+    accentColor: "#00ff88",
+    trendUpStyle: "bg-green-500/10 text-green-400 border-green-500/20",
+    trendDownStyle: "bg-red-500/10 text-red-400 border-red-500/20",
     glow: "metric-glow-green",
     accentBar: "accent-bar-green",
-    iconBox: "icon-box icon-box-green",
-    iconColor: "text-emerald-400",
-    trendBg: "bg-emerald-500/10",
-    trendText: "text-emerald-400",
   },
   orange: {
-    glow: "metric-glow-orange",
-    accentBar: "accent-bar-amber",
+    neonCard: "neon-card-amber",
     iconBox: "icon-box icon-box-amber",
     iconColor: "text-amber-400",
-    trendBg: "bg-amber-500/10",
-    trendText: "text-amber-400",
+    accentColor: "#ffaa00",
+    trendUpStyle: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    trendDownStyle: "bg-red-500/10 text-red-400 border-red-500/20",
+    glow: "metric-glow-orange",
+    accentBar: "accent-bar-amber",
   },
   purple: {
+    neonCard: "neon-card-violet",
+    iconBox: "icon-box icon-box-violet",
+    iconColor: "text-violet-400",
+    accentColor: "#8b5cf6",
+    trendUpStyle: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+    trendDownStyle: "bg-red-500/10 text-red-400 border-red-500/20",
     glow: "metric-glow-purple",
     accentBar: "accent-bar-purple",
-    iconBox: "icon-box icon-box-purple",
-    iconColor: "text-violet-400",
-    trendBg: "bg-violet-500/10",
-    trendText: "text-violet-400",
   },
   cyan: {
+    neonCard: "neon-card-pink",
+    iconBox: "icon-box icon-box-pink",
+    iconColor: "text-pink-400",
+    accentColor: "#f045c8",
+    trendUpStyle: "bg-pink-500/10 text-pink-400 border-pink-500/20",
+    trendDownStyle: "bg-red-500/10 text-red-400 border-red-500/20",
     glow: "metric-glow-cyan",
     accentBar: "accent-bar-cyan",
-    iconBox: "icon-box icon-box-cyan",
-    iconColor: "text-teal-400",
-    trendBg: "bg-teal-500/10",
-    trendText: "text-teal-400",
   },
   default: {
+    neonCard: "neon-card-violet",
+    iconBox: "icon-box icon-box-violet",
+    iconColor: "text-violet-400",
+    accentColor: "#8b5cf6",
+    trendUpStyle: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+    trendDownStyle: "bg-red-500/10 text-red-400 border-red-500/20",
     glow: "",
     accentBar: "accent-bar-purple",
-    iconBox: "icon-box",
-    iconColor: "text-muted-foreground",
-    trendBg: "bg-muted/50",
-    trendText: "text-muted-foreground",
   },
 };
 
@@ -88,61 +103,75 @@ const KPICard = ({
 
   return (
     <div
-      className={`glass-card relative overflow-hidden p-5 transition-all duration-300 hover:scale-[1.025] group cursor-default ${style.glow}`}
+      className={`void-card relative overflow-hidden p-5 transition-all duration-300 hover:scale-[1.022] group cursor-default ${style.neonCard}`}
     >
-      {/* Top accent bar */}
-      <div className={`absolute inset-x-0 top-0 h-[3px] ${style.accentBar} opacity-90`} />
+      {/* Corner accent dot */}
+      <div
+        className="absolute top-3.5 right-3.5 w-1.5 h-1.5 rounded-full opacity-60"
+        style={{ background: style.accentColor, boxShadow: `0 0 6px ${style.accentColor}` }}
+      />
 
-      {/* Subtle inner glow at top */}
-      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white/[0.03] to-transparent pointer-events-none" />
+      {/* Inner left accent wash */}
+      <div
+        className="absolute inset-y-0 left-0 w-16 pointer-events-none"
+        style={{ background: `linear-gradient(90deg, ${style.accentColor}08, transparent)` }}
+      />
 
+      {/* Header row */}
       <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-1.5 flex-1 min-w-0">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground truncate">
+        <div className="flex items-center gap-1.5 flex-1 min-w-0 pr-2">
+          <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground truncate">
             {title}
           </span>
           <button
             onClick={(e) => { e.stopPropagation(); setLocalHidden((v) => !v); }}
-            className="p-0.5 rounded text-muted-foreground/30 hover:text-muted-foreground/70 transition-colors flex-shrink-0"
+            className="p-0.5 rounded text-muted-foreground/25 hover:text-muted-foreground/60 transition-colors flex-shrink-0"
           >
             {localHidden ? <EyeOff className="h-2.5 w-2.5" /> : <Eye className="h-2.5 w-2.5" />}
           </button>
         </div>
         <div className={style.iconBox}>
-          <Icon className={`h-5 w-5 ${style.iconColor}`} />
+          <Icon className={`h-4.5 w-4.5 ${style.iconColor}`} style={{ width: 18, height: 18 }} />
         </div>
       </div>
 
-      <p className="text-[1.6rem] font-display font-bold tracking-tight leading-none mb-3 text-foreground">
+      {/* Value */}
+      <p
+        className="font-data font-bold tracking-tight leading-none mb-3.5"
+        style={{ fontSize: "1.75rem", color: "hsl(238 40% 96%)" }}
+      >
         {isHidden ? (
-          <span className="tracking-widest text-muted-foreground/40">••••••</span>
+          <span style={{ letterSpacing: "0.2em", color: "rgba(255,255,255,0.2)", fontSize: "1.3rem" }}>
+            ••••••
+          </span>
         ) : (
           value
         )}
       </p>
 
+      {/* Trend */}
       {trend && (
         <div className="flex items-center gap-2">
           <div
-            className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
+            className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-semibold border ${
               trendNeutral
-                ? "bg-muted/40 text-muted-foreground border-muted/50"
+                ? "bg-white/5 text-muted-foreground border-white/10"
                 : trendUp
-                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                : "bg-red-500/10 text-red-400 border-red-500/20"
+                ? style.trendUpStyle
+                : style.trendDownStyle
             }`}
           >
             {trendNeutral ? (
-              <Minus className="h-3 w-3" />
+              <Minus className="h-2.5 w-2.5" />
             ) : trendUp ? (
-              <TrendingUp className="h-3 w-3" />
+              <TrendingUp className="h-2.5 w-2.5" />
             ) : (
-              <TrendingDown className="h-3 w-3" />
+              <TrendingDown className="h-2.5 w-2.5" />
             )}
-            {isHidden ? "••••" : trend}
+            <span>{isHidden ? "••••" : trend}</span>
           </div>
           {previousValue && !isHidden && (
-            <span className="text-[10px] text-muted-foreground/60 truncate">
+            <span className="text-[10px] text-muted-foreground/50 truncate font-data">
               ant: {previousValue}
             </span>
           )}

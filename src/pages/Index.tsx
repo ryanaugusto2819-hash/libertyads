@@ -602,7 +602,7 @@ const Index = () => {
     <div className="min-h-screen">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border/40 header-glow px-6 py-3.5"
-        style={{ background: "hsl(258 35% 5% / 0.85)", backdropFilter: "blur(24px)" }}>
+        style={{ background: "rgba(4,4,16,0.88)", backdropFilter: "blur(24px)" }}>
         {/* Top purple line */}
         <div className="absolute inset-x-0 top-0 h-px accent-bar-purple opacity-60" />
         <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -727,7 +727,7 @@ const Index = () => {
         <section>
           <div className="flex items-center gap-3 mb-5 flex-wrap">
             <div className="flex items-center gap-2.5">
-              <div className="h-4 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, #a78bfa, #7c3aed)" }} />
+              <div className="h-4 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, #00e5ff, #0099cc)" }} />
               <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
                 Visão Geral
               </h2>
@@ -842,7 +842,7 @@ const Index = () => {
         {!loading && (
           <section className="animate-fade-in-up" style={{ animationDelay: "200ms" }}>
             <div className="flex items-center gap-2.5 mb-5">
-              <div className="h-4 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, #34d399, #059669)" }} />
+              <div className="h-4 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, #00ff88, #00cc66)" }} />
               <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
                 Evolução
               </h2>
@@ -855,7 +855,7 @@ const Index = () => {
         {!loading && (
           <section className="animate-fade-in-up" style={{ animationDelay: "300ms" }}>
             <div className="flex items-center gap-2.5 mb-5">
-              <div className="h-4 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, #fcd34d, #d97706)" }} />
+              <div className="h-4 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, #ffaa00, #cc8800)" }} />
               <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
                 Detalhamento
               </h2>
@@ -867,7 +867,7 @@ const Index = () => {
         {/* Section: Webhook History */}
         <section className="animate-fade-in-up" style={{ animationDelay: "400ms" }}>
           <div className="flex items-center gap-2.5 mb-5">
-            <div className="h-4 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, #f472b6, #db2777)" }} />
+            <div className="h-4 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, #f045c8, #c030a0)" }} />
             <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
               Histórico de Webhooks
             </h2>
