@@ -12,8 +12,36 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Multi-tenant: each user has a personal webhook key that identifies the owner of the sale.
+    const url = new URL(req.url);
+    const webhookKey = (url.searchParams.get("key") || req.headers.get("x-webhook-key") || "").trim();
+
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    let ownerId: string | null = null;
+    if (webhookKey) {
+      const { data: owner } = await admin
+        .from("profiles")
+        .select("id")
+        .eq("webhook_key", webhookKey)
+        .maybeSingle();
+      ownerId = owner?.id ?? null;
+    }
+
+    if (!ownerId) {
+      console.error("Webhook rejected: missing or invalid key");
+      return new Response(JSON.stringify({ error: "Invalid or missing webhook key" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const rawText = await req.text();
     console.log("=== RAW WEBHOOK PAYLOAD ===", rawText);
+
     // Tolerant parser: handles double-encoded JSON, missing commas, and loose "key: value" strings
     const tolerantParse = (text: string): any => {
       let t = text.trim();
@@ -71,10 +99,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const supabase = admin;
 
     const toBrtDate = (value?: any) => {
       const d = value ? new Date(value) : new Date();
@@ -136,6 +161,7 @@ Deno.serve(async (req) => {
         // Respect the webhook currency and default to BRL instead of inferring pesos from country.
         currency: ["BRL", "UYU", "ARS", "PYG", "USD"].includes(payloadCurrency) ? payloadCurrency : "BRL",
         phone: phoneRaw ? String(phoneRaw).trim() : null,
+        user_id: ownerId,
       };
     });
 

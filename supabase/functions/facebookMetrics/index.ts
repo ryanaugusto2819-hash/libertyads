@@ -1,3 +1,4 @@
+import { getCaller, unauthorized } from "../_shared/auth.ts";
 import { getDbAccountConfigs } from "../_shared/bmAccounts.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -200,9 +201,10 @@ async function fetchAccountMetrics(
   return { data: processed, connected: true };
 }
 
-async function getAllConfigs(): Promise<AccountConfig[]> {
-  const configs = getAccountConfigs();
-  const dbConfigs = await getDbAccountConfigs();
+async function getAllConfigs(userId: string, isAdmin: boolean): Promise<AccountConfig[]> {
+  // Legacy env-based accounts belong to the platform owner (admin) only.
+  const configs = isAdmin ? getAccountConfigs() : [];
+  const dbConfigs = await getDbAccountConfigs(userId);
   for (const d of dbConfigs) {
     if (!configs.some((c) => c.label === d.label)) {
       configs.push({ label: d.label, accessToken: d.accessToken, adAccount: d.adAccount });
@@ -219,6 +221,10 @@ serve(async (req) => {
         status: 405,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+
+    const caller = await getCaller(req);
+    if (!caller.userId || !caller.approved) return unauthorized(corsHeaders);
+
     const { from, to, account } = await req.json();
     if (!from || !to)
       return new Response(JSON.stringify({ error: "Missing from/to" }), {
@@ -226,14 +232,15 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
 
-    const allConfigs = await getAllConfigs();
+    const allConfigs = await getAllConfigs(caller.userId, caller.isAdmin);
     if (allConfigs.length === 0)
-      return new Response(JSON.stringify({ error: "No Meta accounts configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ data: [], byDate: {}, total: 0, connected: false, accounts: [] }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
 
     const configs = account && account !== "all" ? allConfigs.filter((c) => c.label === account) : allConfigs;
+
     const results = await Promise.allSettled(configs.map((c) => fetchAccountMetrics(c, from, to)));
 
     const allProcessed: ProcessedMetric[] = [];
