@@ -82,16 +82,23 @@ const SettingsDialog = ({ niches, countries, bmAccounts, onChanged }: SettingsDi
     if (!label || !slug || !adAccount) return toast.error("Preencha apelido e ID da conta");
     if (!token) return toast.error("Informe o token da Meta");
     setSaving(true);
-    const { error } = await supabase.from("bm_accounts").insert({
+    const { data: inserted, error } = await supabase.from("bm_accounts").insert({
       label,
       slug,
       ad_account_id: adAccount,
       currency: (bm.currency.trim() || "BRL").toUpperCase(),
-      access_token: token,
       sort_order: bmAccounts.length + 1,
+    }).select("id").single();
+    if (error || !inserted) {
+      setSaving(false);
+      return toast.error("Erro ao salvar BM: " + (error?.message || ""));
+    }
+    const { error: secretError } = await supabase.from("bm_account_secrets").insert({
+      bm_account_id: inserted.id,
+      access_token: token,
     });
     setSaving(false);
-    if (error) return toast.error("Erro ao salvar BM: " + error.message);
+    if (secretError) return toast.error("Erro ao salvar token: " + secretError.message);
     toast.success(`${label} adicionada`);
     setBm(emptyBm);
     onChanged();
