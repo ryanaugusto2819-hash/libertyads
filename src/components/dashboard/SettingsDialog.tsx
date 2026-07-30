@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Settings, Plus, Trash2, Loader2 } from "lucide-react";
+import { Settings, Plus, Trash2, Loader2, Copy, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -26,6 +26,40 @@ const SettingsDialog = ({ niches, countries, bmAccounts, onChanged }: SettingsDi
   const [niche, setNiche] = useState(emptyNiche);
   const [country, setCountry] = useState(emptyCountry);
   const [bm, setBm] = useState(emptyBm);
+  const [webhookKey, setWebhookKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("webhook_key")
+        .eq("id", auth.user.id)
+        .maybeSingle();
+      setWebhookKey((data as any)?.webhook_key ?? null);
+    })();
+  }, [open]);
+
+  const webhookUrl = webhookKey
+    ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/webhookSales?key=${webhookKey}`
+    : "";
+
+  const regenerateKey = async () => {
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) return;
+    const newKey = crypto.randomUUID().replace(/-/g, "");
+    setSaving(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ webhook_key: newKey } as any)
+      .eq("id", auth.user.id);
+    setSaving(false);
+    if (error) return toast.error("Erro ao gerar nova chave: " + error.message);
+    setWebhookKey(newKey);
+    toast.success("Nova chave gerada — atualize a URL na origem do webhook");
+  };
 
   useEffect(() => {
     if (!open) {
@@ -135,6 +169,7 @@ const SettingsDialog = ({ niches, countries, bmAccounts, onChanged }: SettingsDi
               <TabsTrigger value="nichos" className="flex-1">Nichos</TabsTrigger>
               <TabsTrigger value="paises" className="flex-1">Países</TabsTrigger>
               <TabsTrigger value="bms" className="flex-1">BMs</TabsTrigger>
+              <TabsTrigger value="webhook" className="flex-1">Webhook</TabsTrigger>
             </TabsList>
 
             {/* NICHOS */}
@@ -265,6 +300,46 @@ const SettingsDialog = ({ niches, countries, bmAccounts, onChanged }: SettingsDi
                   </p>
                 )}
               </div>
+            </TabsContent>
+
+            {/* WEBHOOK */}
+            <TabsContent value="webhook" className="space-y-4 pt-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Sua URL exclusiva de webhook de vendas</Label>
+                <div className="flex gap-2">
+                  <Input readOnly value={webhookUrl} className="font-mono text-xs" />
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      navigator.clipboard.writeText(webhookUrl);
+                      toast.success("URL copiada");
+                    }}
+                    disabled={!webhookUrl}
+                    className="gap-1.5 shrink-0"
+                  >
+                    <Copy className="h-4 w-4" /> Copiar
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Cole essa URL na origem das vendas. Todas as vendas recebidas por ela ficam visíveis apenas na sua conta.
+                  Nunca compartilhe essa chave.
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-border/50 p-3 space-y-2">
+                <p className="text-xs text-muted-foreground">Formato esperado do JSON:</p>
+                <pre className="text-[11px] font-mono text-muted-foreground overflow-auto">{`{
+  "campaign": "(UY-DIABE) ABACATE",
+  "creative": "ABACATE",
+  "revenue": 1000,
+  "country": "UY",
+  "phone": "+5511999999999"
+}`}</pre>
+              </div>
+
+              <Button variant="outline" onClick={regenerateKey} disabled={saving} className="gap-1.5">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Gerar nova chave
+              </Button>
             </TabsContent>
           </Tabs>
         </DialogContent>
