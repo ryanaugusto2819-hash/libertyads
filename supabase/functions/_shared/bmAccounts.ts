@@ -1,5 +1,6 @@
-// Loads BM accounts registered through the app UI (public.bm_accounts).
-// Tokens are read here with the service role and never leave the server.
+// Loads BM accounts registered through the app UI (public.bm_accounts),
+// always scoped to the owning user. Tokens are read here with the service
+// role and never leave the server.
 
 export interface DbAccountConfig {
   label: string;
@@ -8,14 +9,14 @@ export interface DbAccountConfig {
   currency?: string;
 }
 
-export async function getDbAccountConfigs(): Promise<DbAccountConfig[]> {
+export async function getDbAccountConfigs(userId?: string | null): Promise<DbAccountConfig[]> {
   const url = Deno.env.get("SUPABASE_URL");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !key) return [];
+  if (!url || !key || !userId) return [];
 
   try {
     const res = await fetch(
-      `${url}/rest/v1/bm_accounts?select=slug,ad_account_id,currency,sort_order,bm_account_secrets(access_token)&is_active=eq.true&order=sort_order.asc`,
+      `${url}/rest/v1/bm_accounts?select=slug,ad_account_id,currency,sort_order,bm_account_secrets(access_token)&is_active=eq.true&user_id=eq.${userId}&order=sort_order.asc`,
       { headers: { apikey: key, Authorization: `Bearer ${key}` } },
     );
     if (!res.ok) {
