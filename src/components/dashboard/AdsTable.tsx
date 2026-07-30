@@ -407,14 +407,8 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
     return true;
   });
   const uSales = unmatchedSales.reduce((sum, s) => sum + Number(s.sales || 0), 0);
-  const uRevenue = unmatchedSales.reduce((sum, s) => {
-    const raw = Number(s.revenue || 0);
-    const currency = (s.currency || "").toUpperCase();
-    if (currency === "UYU") return sum + raw / 7.93;
-    if (currency === "ARS") return sum + raw / 278.39;
-        if (currency === "PYG") return sum + raw / 1176.54;
-    return sum + raw;
-  }, 0);
+  const uRevenue = unmatchedSales.reduce((sum, s) => sum + convertRev(s), 0);
+
   const unmatchedGroups = Array.from(unmatchedSales.reduce((map, s) => {
     const key = (s.campaign || s.creative || "Sem campanha").trim() || "Sem campanha";
     const current = map.get(key) || { label: key, sales: 0, revenue: 0 };
