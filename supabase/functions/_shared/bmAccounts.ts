@@ -15,7 +15,7 @@ export async function getDbAccountConfigs(): Promise<DbAccountConfig[]> {
 
   try {
     const res = await fetch(
-      `${url}/rest/v1/bm_accounts?select=slug,ad_account_id,access_token,currency,sort_order&is_active=eq.true&order=sort_order.asc`,
+      `${url}/rest/v1/bm_accounts?select=slug,ad_account_id,currency,sort_order,bm_account_secrets(access_token)&is_active=eq.true&order=sort_order.asc`,
       { headers: { apikey: key, Authorization: `Bearer ${key}` } },
     );
     if (!res.ok) {
@@ -25,10 +25,10 @@ export async function getDbAccountConfigs(): Promise<DbAccountConfig[]> {
     const rows = await res.json();
     if (!Array.isArray(rows)) return [];
     return rows
-      .filter((r: any) => r?.slug && r?.ad_account_id && r?.access_token)
+      .filter((r: any) => r?.slug && r?.ad_account_id && r?.bm_account_secrets?.access_token)
       .map((r: any) => ({
         label: String(r.slug),
-        accessToken: String(r.access_token),
+        accessToken: String(r.bm_account_secrets.access_token),
         adAccount: String(r.ad_account_id).replace(/^act_/, ""),
         currency: r.currency || "BRL",
       }));
