@@ -54,6 +54,7 @@ const getPreviousDateRange = (from: Date, to: Date) => {
 
 const UYU_TO_BRL = 7.93;
 const ARS_TO_BRL = 278.39;
+const PYG_TO_BRL = 1176.54;
 const USD_TO_BRL = 5.10;
 
 const applyUsdConversion = (items: any[]) =>
@@ -73,6 +74,7 @@ const convertRevenue = (sale: SaleEntry) => {
   const currency = (sale.currency || "").toUpperCase();
   if (currency === "UYU") return raw / UYU_TO_BRL;
   if (currency === "ARS") return raw / ARS_TO_BRL;
+  if (currency === "PYG") return raw / PYG_TO_BRL;
   return raw; // BRL by default
 };
 
@@ -120,7 +122,7 @@ const normalizeMetaErrorMessage = (message: string) => {
   return message;
 };
 
-const hasCountryTag = (value: string, tag: "BR" | "UY" | "AR") => {
+const hasCountryTag = (value: string, tag: "BR" | "UY" | "AR" | "PY") => {
   const normalized = (value || "").toUpperCase();
   return new RegExp(`(^|[^A-Z0-9])${tag}([^A-Z0-9]|$)`).test(normalized);
 };
@@ -128,6 +130,7 @@ const hasCountryTag = (value: string, tag: "BR" | "UY" | "AR") => {
 const getAdCountryFlags = (ad: any) => {
   const source = [ad.campaign_name, ad.ad_name, ad.name].filter(Boolean).join(" ");
   return {
+    isPY: hasCountryTag(source, "PY") || /PARAGUAI|PARAGUAY/i.test(source),
     isAR: hasCountryTag(source, "AR") || /ARGENTINA/i.test(source),
     isUY: hasCountryTag(source, "UY") || /URUGUAI|URUGUAY/i.test(source),
     isBR: hasCountryTag(source, "BR") || /BRASIL|BRAZIL/i.test(source),
@@ -138,6 +141,7 @@ const getSaleCountryFlags = (sale: any) => {
   const country = (sale.country || "").toLowerCase().trim();
   const source = [sale.creative, sale.campaign].filter(Boolean).join(" ");
   return {
+    isPY: country.includes("paragua") || country === "py" || hasCountryTag(source, "PY"),
     isAR: country.includes("argentin") || country === "ar" || hasCountryTag(source, "AR"),
     isUY: country.includes("uruguai") || country.includes("uruguay") || country === "uy" || hasCountryTag(source, "UY"),
     isBR: country.includes("brasil") || country.includes("brazil") || country === "br" || hasCountryTag(source, "BR"),
@@ -169,7 +173,7 @@ const Index = () => {
   const [error, setError] = useState<string | null>(null);
   const [hideValues, setHideValues] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [countryFilter, setCountryFilter] = useState<"all" | "uruguay" | "brasil" | "argentina">("all");
+  const [countryFilter, setCountryFilter] = useState<"all" | "uruguay" | "brasil" | "argentina" | "paraguai">("all");
   const [nichoFilter, setNichoFilter] = useState<"all" | "adulto" | "emagrecimento" | "prostata" | "diabetes">("all");
   const [bmFilter, setBmFilter] = useState<"all" | "bm1" | "bm2" | "bm3">("all");
   const [campaignBudgets, setCampaignBudgets] = useState<Record<string, { daily_budget: number; name: string; status: string }>>({});
@@ -317,11 +321,12 @@ const Index = () => {
     fetchData();
   }, [range, customRange, bmFilter]);
 
-  const isAdCountry = (ad: any, country: "uruguay" | "brasil" | "argentina") => {
-    const { isAR, isUY, isBR } = getAdCountryFlags(ad);
+  const isAdCountry = (ad: any, country: "uruguay" | "brasil" | "argentina" | "paraguai") => {
+    const { isAR, isUY, isBR, isPY } = getAdCountryFlags(ad);
     if (country === "brasil") return isBR;
     if (country === "argentina") return isAR;
-    return isUY || (!isAR && !isBR);
+    if (country === "paraguai") return isPY;
+    return isUY || (!isAR && !isBR && !isPY);
   };
 
   const isAdNicho = (ad: any, nicho: "adulto" | "emagrecimento" | "prostata" | "diabetes") => {
@@ -377,10 +382,11 @@ const Index = () => {
     let result = salesData;
     if (countryFilter !== "all") {
       result = result.filter(s => {
-        const { isAR, isUY, isBR } = getSaleCountryFlags(s);
+        const { isAR, isUY, isBR, isPY } = getSaleCountryFlags(s);
         if (countryFilter === "brasil") return isBR;
         if (countryFilter === "argentina") return isAR;
-        return isUY || (!isAR && !isBR);
+        if (countryFilter === "paraguai") return isPY;
+        return isUY || (!isAR && !isBR && !isPY);
       });
     }
     if (nichoFilter !== "all") {
@@ -411,10 +417,11 @@ const Index = () => {
     let result = prevSalesData;
     if (countryFilter !== "all") {
       result = result.filter(s => {
-        const { isAR, isUY, isBR } = getSaleCountryFlags(s);
+        const { isAR, isUY, isBR, isPY } = getSaleCountryFlags(s);
         if (countryFilter === "brasil") return isBR;
         if (countryFilter === "argentina") return isAR;
-        return isUY || (!isAR && !isBR);
+        if (countryFilter === "paraguai") return isPY;
+        return isUY || (!isAR && !isBR && !isPY);
       });
     }
     if (nichoFilter !== "all") {
@@ -571,6 +578,7 @@ const Index = () => {
                 <TabsTrigger value="uruguay" className="text-xs px-3 h-6">🇺🇾 Uruguai</TabsTrigger>
                 <TabsTrigger value="brasil" className="text-xs px-3 h-6">🇧🇷 Brasil</TabsTrigger>
                 <TabsTrigger value="argentina" className="text-xs px-3 h-6">🇦🇷 Argentina</TabsTrigger>
+                <TabsTrigger value="paraguai" className="text-xs px-3 h-6">🇵🇾 Paraguai</TabsTrigger>
               </TabsList>
             </Tabs>
             <Tabs value={nichoFilter} onValueChange={(v) => setNichoFilter(v as any)}>

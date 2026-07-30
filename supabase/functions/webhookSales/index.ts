@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
       // Infer country from campaign tag when missing or inconsistent with campaign name
       // e.g. "(UY-PROSTA) ADS03" → UY, "(EMA-UY) E13" → UY, "(AR-ADULTO)" → AR
       const campaignTag = campaign.match(/\(([^)]*)\)/)?.[1] || campaign;
-      const campPrefix = campaignTag.match(/(?:^|[^A-Z0-9])(UY|AR|BR)(?:[^A-Z0-9]|$)/i)?.[1]?.toUpperCase();
+      const campPrefix = campaignTag.match(/(?:^|[^A-Z0-9])(UY|AR|BR|PY)(?:[^A-Z0-9]|$)/i)?.[1]?.toUpperCase();
       if (campPrefix && campPrefix !== country) {
         console.log(`Country override: payload=${country} → campaign prefix=${campPrefix}`);
         country = campPrefix;
@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
         country,
         // The sale amount arrives in BRL even when the campaign/country is UY or AR.
         // Respect the webhook currency and default to BRL instead of inferring pesos from country.
-        currency: ["BRL", "UYU", "ARS", "USD"].includes(payloadCurrency) ? payloadCurrency : "BRL",
+        currency: ["BRL", "UYU", "ARS", "PYG", "USD"].includes(payloadCurrency) ? payloadCurrency : "BRL",
         phone: phoneRaw ? String(phoneRaw).trim() : null,
       };
     });

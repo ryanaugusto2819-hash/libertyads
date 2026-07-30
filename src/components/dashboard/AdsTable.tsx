@@ -67,7 +67,7 @@ const timeAgo = (iso: string): string => {
   return `há ${mo}mes${mo > 1 ? "es" : ""}`;
 };
 
-const hasCountryTag = (value: string, tag: "BR" | "UY" | "AR") => {
+const hasCountryTag = (value: string, tag: "BR" | "UY" | "AR" | "PY") => {
   const normalized = (value || "").toUpperCase();
   return new RegExp(`(^|[^A-Z0-9])${tag}([^A-Z0-9]|$)`).test(normalized);
 };
@@ -75,6 +75,7 @@ const hasCountryTag = (value: string, tag: "BR" | "UY" | "AR") => {
 const getAdCountryFlags = (ad: any) => {
   const source = [ad.campaign_name, ad.ad_name, ad.name].filter(Boolean).join(" ");
   return {
+    isPY: hasCountryTag(source, "PY") || /PARAGUAI|PARAGUAY/i.test(source),
     isAR: hasCountryTag(source, "AR") || /ARGENTINA/i.test(source),
     isUY: hasCountryTag(source, "UY") || /URUGUAI|URUGUAY/i.test(source),
     isBR: hasCountryTag(source, "BR") || /BRASIL|BRAZIL/i.test(source),
@@ -294,6 +295,7 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
     const currency = (s.currency || "").toUpperCase();
     if (currency === "UYU") return raw / 7.93;
     if (currency === "ARS") return raw / 278.39;
+    if (currency === "PYG") return raw / 1176.54;
     return raw;
   };
 
@@ -365,6 +367,7 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
         const currency = (s.currency || "").toUpperCase();
         if (currency === "UYU") return sum + raw / 7.93;
         if (currency === "ARS") return sum + raw / 278.39;
+        if (currency === "PYG") return sum + raw / 1176.54;
         return sum + raw;
       }, 0);
       const cpl = ad.costPerLead ?? ad.cpl ?? (leads > 0 ? spend / leads : 0);
@@ -409,6 +412,7 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
     const currency = (s.currency || "").toUpperCase();
     if (currency === "UYU") return sum + raw / 7.93;
     if (currency === "ARS") return sum + raw / 278.39;
+        if (currency === "PYG") return sum + raw / 1176.54;
     return sum + raw;
   }, 0);
   const unmatchedGroups = Array.from(unmatchedSales.reduce((map, s) => {
