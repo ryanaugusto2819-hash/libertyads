@@ -173,10 +173,19 @@ const Index = () => {
   const [error, setError] = useState<string | null>(null);
   const [hideValues, setHideValues] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [countryFilter, setCountryFilter] = useState<"all" | "uruguay" | "brasil" | "argentina" | "paraguai">("all");
-  const [nichoFilter, setNichoFilter] = useState<"all" | "adulto" | "emagrecimento" | "prostata" | "diabetes">("all");
-  const [bmFilter, setBmFilter] = useState<"all" | "bm1" | "bm2" | "bm3">("all");
+  const [countryFilter, setCountryFilter] = useState<string>("all");
+  const [nichoFilter, setNichoFilter] = useState<string>("all");
+  const [bmFilter, setBmFilter] = useState<string>("all");
   const [campaignBudgets, setCampaignBudgets] = useState<Record<string, { daily_budget: number; name: string; status: string }>>({});
+  const { niches, countries, bmAccounts, reload: reloadSettings } = useDashboardSettings();
+
+  const currencyRates = useMemo(
+    () => ({
+      ...DEFAULT_RATES,
+      ...Object.fromEntries(countries.map((c) => [c.currency_code.toUpperCase(), Number(c.rate_to_brl) || 1])),
+    }),
+    [countries]
+  );
 
   const fetchData = async () => {
     try {
