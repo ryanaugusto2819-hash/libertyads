@@ -184,6 +184,7 @@ const Index = () => {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [nichoFilter, setNichoFilter] = useState<string>("all");
+  const [campaignFilter, setCampaignFilter] = useState<string>("all");
   const [bmFilter, setBmFilter] = useState<string>("all");
   const [campaignBudgets, setCampaignBudgets] = useState<Record<string, { daily_budget: number; name: string; status: string }>>({});
   const { niches, countries, bmAccounts, reload: reloadSettings } = useDashboardSettings();
