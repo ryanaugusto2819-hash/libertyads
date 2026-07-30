@@ -560,6 +560,26 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
                 </button>
               ))}
             </div>
+            {/* Status filter */}
+            <div className="flex items-center bg-secondary/50 rounded-lg p-0.5 border border-border/30">
+              {([
+                { value: "all" as const, label: "Todos" },
+                { value: "active" as const, label: "Ativos" },
+                { value: "paused" as const, label: "Pausados" },
+              ]).map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setStatusFilter(opt.value)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                    statusFilter === opt.value
+                      ? "bg-primary/20 text-primary shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
             {/* Search */}
             <div className="relative w-full sm:w-56">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
