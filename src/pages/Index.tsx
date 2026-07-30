@@ -176,6 +176,27 @@ const Index = () => {
   const navigate = useNavigate();
   const [range, setRange] = useState("today");
   const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | undefined>();
+
+  const RANGE_LABELS: Record<string, string> = {
+    today: "Hoje",
+    yesterday: "Ontem",
+    "7days": "Últimos 7 dias",
+    "30days": "Últimos 30 dias",
+    custom: "Personalizado",
+  };
+  const periodLabel = RANGE_LABELS[range] ?? range;
+  const periodSubLabel = useMemo(() => {
+    const today = new Date();
+    let from = today;
+    let to = today;
+    if (range === "yesterday") { from = subDays(today, 1); to = subDays(today, 1); }
+    else if (range === "7days") { from = subDays(today, 6); }
+    else if (range === "30days") { from = subDays(today, 29); }
+    else if (range === "custom" && customRange) { from = customRange.from; to = customRange.to; }
+    const f = format(from, "dd/MM");
+    const t = format(to, "dd/MM");
+    return f === t ? f : `${f} — ${t}`;
+  }, [range, customRange]);
   const [data, setData] = useState<any[]>([]);
   const [salesData, setSalesData] = useState<any[]>([]);
   const [prevData, setPrevData] = useState<any[]>([]);
