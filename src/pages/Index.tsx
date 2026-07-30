@@ -522,36 +522,43 @@ const Index = () => {
   }, [filteredData]);
 
   useEffect(() => {
-    if (campaignFilter !== "all" && !campaignOptions.includes(campaignFilter)) {
-      setCampaignFilter("all");
-    }
-  }, [campaignOptions, campaignFilter]);
+    setSelectedCampaigns((prev) => {
+      const next = prev.filter((c) => campaignOptions.includes(c));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [campaignOptions]);
 
   const normName = (v: string) => (v || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
   const matchesCampaignFilter = (value: string) => {
-    if (campaignFilter === "all") return true;
-    const target = normName(campaignFilter);
+    if (selectedCampaigns.length === 0) return true;
     const candidate = normName(value);
-    if (!candidate || !target) return false;
-    return candidate === target || candidate.includes(target) || target.includes(candidate);
+    if (!candidate) return false;
+    return selectedCampaigns.some((sel) => {
+      const target = normName(sel);
+      if (!target) return false;
+      return candidate === target || candidate.includes(target) || target.includes(candidate);
+    });
   };
 
+  const toggleCampaign = (name: string) =>
+    setSelectedCampaigns((prev) => (prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]));
+
   const kpiAds = useMemo(
-    () => (campaignFilter === "all" ? filteredData : filteredData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
-    [filteredData, campaignFilter]
+    () => (selectedCampaigns.length === 0 ? filteredData : filteredData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
+    [filteredData, selectedCampaigns]
   );
   const kpiPrevAds = useMemo(
-    () => (campaignFilter === "all" ? filteredPrevData : filteredPrevData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
-    [filteredPrevData, campaignFilter]
+    () => (selectedCampaigns.length === 0 ? filteredPrevData : filteredPrevData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
+    [filteredPrevData, selectedCampaigns]
   );
   const kpiSales = useMemo(
-    () => (campaignFilter === "all" ? filteredSalesData : filteredSalesData.filter((s) => matchesCampaignFilter(s.campaign || ""))),
-    [filteredSalesData, campaignFilter]
+    () => (selectedCampaigns.length === 0 ? filteredSalesData : filteredSalesData.filter((s) => matchesCampaignFilter(s.campaign || ""))),
+    [filteredSalesData, selectedCampaigns]
   );
   const kpiPrevSales = useMemo(
-    () => (campaignFilter === "all" ? filteredPrevSalesData : filteredPrevSalesData.filter((s) => matchesCampaignFilter(s.campaign || ""))),
-    [filteredPrevSalesData, campaignFilter]
+    () => (selectedCampaigns.length === 0 ? filteredPrevSalesData : filteredPrevSalesData.filter((s) => matchesCampaignFilter(s.campaign || ""))),
+    [filteredPrevSalesData, selectedCampaigns]
   );
 
   const kpi = useMemo(() => calcKpis(kpiAds, kpiSales, currencyRates), [kpiAds, kpiSales, currencyRates]);
