@@ -347,10 +347,10 @@ const Index = () => {
 
   const filteredData = useMemo(() => {
     let result = data;
-    if (countryFilter !== "all") result = result.filter(ad => isAdCountry(ad, countryFilter));
-    if (nichoFilter !== "all") result = result.filter(ad => isAdNicho(ad, nichoFilter));
+    if (countryFilter !== "all") result = result.filter(ad => isAdCountry(ad));
+    if (nichoFilter !== "all") result = result.filter(ad => isAdNicho(ad));
     return result;
-  }, [data, countryFilter, nichoFilter]);
+  }, [data, countryFilter, nichoFilter, countries]);
 
   // Get ad/campaign names from filtered data to filter sales by nicho
   const filteredSaleSources = useMemo(() => {
