@@ -57,6 +57,14 @@ const ARS_TO_BRL = 278.39;
 const PYG_TO_BRL = 1176.54;
 const USD_TO_BRL = 5.10;
 
+const DEFAULT_RATES: Record<string, number> = {
+  UYU: UYU_TO_BRL,
+  ARS: ARS_TO_BRL,
+  PYG: PYG_TO_BRL,
+};
+
+const STATIC_BMS = ["bm1", "bm2", "bm3", "bm4", "bm5", "bm6", "bm7", "bm8", "bm9", "bm10", "bm11"];
+
 const applyUsdConversion = (items: any[]) =>
   items.map((item) => {
     if (item.bm_account !== "bm4" && item.bm_account !== "bm5") return item;
@@ -69,20 +77,18 @@ const applyUsdConversion = (items: any[]) =>
     };
   });
 
-const convertRevenue = (sale: SaleEntry) => {
+const convertRevenue = (sale: SaleEntry, rates: Record<string, number>) => {
   const raw = Number(sale.revenue || 0);
   const currency = (sale.currency || "").toUpperCase();
-  if (currency === "UYU") return raw / UYU_TO_BRL;
-  if (currency === "ARS") return raw / ARS_TO_BRL;
-  if (currency === "PYG") return raw / PYG_TO_BRL;
-  return raw; // BRL by default
+  const rate = Number(rates[currency] || 0);
+  return rate > 0 ? raw / rate : raw;
 };
 
-const calcKpis = (data: any[], salesData: SaleEntry[]) => {
+const calcKpis = (data: any[], salesData: SaleEntry[], rates: Record<string, number> = DEFAULT_RATES) => {
   const totalSpent = data.reduce((sum, d) => sum + Number(d.spend || 0), 0);
   const totalLeads = data.reduce((sum, d) => sum + Number(d.leads || 0), 0);
   const costPerLead = totalLeads > 0 ? totalSpent / totalLeads : 0;
-  const totalRevenue = salesData.reduce((sum, s) => sum + convertRevenue(s), 0);
+  const totalRevenue = salesData.reduce((sum, s) => sum + convertRevenue(s, rates), 0);
   const totalSales = salesData.reduce((sum, s) => sum + Number(s.sales || 0), 0);
   const conversionRate = totalLeads > 0 ? (totalSales / totalLeads) * 100 : 0;
   const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
@@ -95,6 +101,7 @@ const calcKpis = (data: any[], salesData: SaleEntry[]) => {
 
   return { totalSpent, totalLeads, costPerLead, cpa, roi, conversionRate, averageTicket, totalSales, totalRevenue, lucro70, lucro60, lucro50, lucro40 };
 };
+
 
 const calcTrend = (current: number, previous: number, invertColors = false) => {
   if (previous === 0 && current === 0) return { trend: "0%", trendUp: false, trendNeutral: true };
