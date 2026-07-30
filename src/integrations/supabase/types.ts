@@ -543,7 +543,6 @@ export type Database = {
           ad_account_id: string | null
           created_at: string | null
           currency: string | null
-          has_token: boolean | null
           id: string | null
           is_active: boolean | null
           label: string | null
@@ -555,7 +554,6 @@ export type Database = {
           ad_account_id?: string | null
           created_at?: string | null
           currency?: string | null
-          has_token?: never
           id?: string | null
           is_active?: boolean | null
           label?: string | null
@@ -567,7 +565,6 @@ export type Database = {
           ad_account_id?: string | null
           created_at?: string | null
           currency?: string | null
-          has_token?: never
           id?: string | null
           is_active?: boolean | null
           label?: string | null
