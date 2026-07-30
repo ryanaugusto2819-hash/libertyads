@@ -509,8 +509,8 @@ const Index = () => {
     return Array.from(map.values());
   }, [filteredPrevData]);
 
-  const kpi = useMemo(() => calcKpis(filteredData, filteredSalesData), [filteredData, filteredSalesData]);
-  const prevKpi = useMemo(() => calcKpis(filteredPrevData, filteredPrevSalesData), [filteredPrevData, filteredPrevSalesData]);
+  const kpi = useMemo(() => calcKpis(filteredData, filteredSalesData, currencyRates), [filteredData, filteredSalesData, currencyRates]);
+  const prevKpi = useMemo(() => calcKpis(filteredPrevData, filteredPrevSalesData, currencyRates), [filteredPrevData, filteredPrevSalesData, currencyRates]);
 
   // Metrics where lower is better (invert trend colors)
   const spentTrend = calcTrend(kpi.totalSpent, prevKpi.totalSpent, true);
