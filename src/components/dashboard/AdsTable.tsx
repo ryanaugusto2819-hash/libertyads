@@ -98,6 +98,7 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
   const [previewVideo, setPreviewVideo] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [countryFilter, setCountryFilter] = useState<CountryFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "paused">("all");
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -424,12 +425,24 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
     }
   }, [sortKey]);
 
+  const getRowStatus = useCallback((ad: any) => {
+    const campaignIds: string[] = ad.campaignIds || (ad.campaign_id ? [ad.campaign_id] : []);
+    const statuses = campaignIds.map(cid => localStatuses[cid] || campaignBudgets[cid]?.status || "").filter(Boolean);
+    return statuses.includes("ACTIVE") ? "ACTIVE" : (statuses[0] || ad.status?.toUpperCase() || "");
+  }, [localStatuses, campaignBudgets]);
+
   const filteredRows = useMemo(() => {
     let result = rows.filter(r => r.spend > 0);
     if (countryFilter !== "all") {
       result = result.filter(r => {
         const { isAR, isBR, isUY } = getAdCountryFlags(r.ad);
         return isUY || (!isAR && !isBR);
+      });
+    }
+    if (statusFilter !== "all") {
+      result = result.filter(r => {
+        const st = getRowStatus(r.ad);
+        return statusFilter === "active" ? st === "ACTIVE" : st !== "ACTIVE";
       });
     }
     if (searchQuery.trim()) {
@@ -456,7 +469,7 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
       });
     }
     return result;
-  }, [rows, searchQuery, countryFilter, sortKey, sortDir]);
+  }, [rows, searchQuery, countryFilter, statusFilter, getRowStatus, sortKey, sortDir]);
 
   const SortIcon = ({ col }: { col: SortKey }) => {
     if (sortKey !== col) return <ArrowUpDown className="h-3 w-3 opacity-30 ml-1 inline" />;
@@ -539,6 +552,26 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
                   onClick={() => setCountryFilter(opt.value)}
                   className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
                     countryFilter === opt.value
+                      ? "bg-primary/20 text-primary shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {/* Status filter */}
+            <div className="flex items-center bg-secondary/50 rounded-lg p-0.5 border border-border/30">
+              {([
+                { value: "all" as const, label: "Todos" },
+                { value: "active" as const, label: "Ativos" },
+                { value: "paused" as const, label: "Pausados" },
+              ]).map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setStatusFilter(opt.value)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                    statusFilter === opt.value
                       ? "bg-primary/20 text-primary shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
