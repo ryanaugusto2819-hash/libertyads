@@ -65,7 +65,7 @@ const DEFAULT_RATES: Record<string, number> = {
   PYG: PYG_TO_BRL,
 };
 
-const STATIC_BMS = ["bm1", "bm2", "bm3", "bm4", "bm5", "bm6", "bm7", "bm8", "bm9", "bm10", "bm11"];
+const STATIC_BMS = ["bm11"];
 
 const applyUsdConversion = (items: any[]) =>
   items.map((item) => {
