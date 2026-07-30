@@ -785,7 +785,8 @@ const Index = () => {
                   value={periodLabel}
                   icon={CalendarRange}
                   variant="purple"
-                  previousValue={periodSubLabel}
+                  trend={periodSubLabel}
+                  trendNeutral
                 />
               </div>
               <div className="animate-fade-in-up" style={{ animationDelay: "0ms" }}>
