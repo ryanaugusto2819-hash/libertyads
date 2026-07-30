@@ -48,6 +48,7 @@ interface AdsTableProps {
   isAdmin?: boolean;
   campaignBudgets?: Record<string, { daily_budget: number; name: string; status: string }>;
   bmFilter?: string;
+  currencyRates?: Record<string, number>;
 }
 const fmt = (n: number | null | undefined) => {
   if (n == null || isNaN(n)) return "0,00";
