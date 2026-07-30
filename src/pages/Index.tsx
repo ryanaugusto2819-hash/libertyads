@@ -378,28 +378,21 @@ const Index = () => {
   const filteredSalesData = useMemo(() => {
     let result = salesData;
     if (countryFilter !== "all") {
-      result = result.filter(s => {
-        const { isAR, isUY, isBR, isPY } = getSaleCountryFlags(s);
-        if (countryFilter === "brasil") return isBR;
-        if (countryFilter === "argentina") return isAR;
-        if (countryFilter === "paraguai") return isPY;
-        return isUY || (!isAR && !isBR && !isPY);
-      });
+      result = result.filter(s => matchesCountryFilter(saleSource(s)));
     }
     if (nichoFilter !== "all") {
-      result = result.filter(s => {
-        return isSaleNicho(s, nichoFilter) || matchesFilteredSaleSource(s, filteredSaleSources);
-      });
+      result = result.filter(s => isSaleNicho(s) || matchesFilteredSaleSource(s, filteredSaleSources));
     }
     return result;
-  }, [salesData, countryFilter, nichoFilter, filteredSaleSources]);
+  }, [salesData, countryFilter, nichoFilter, filteredSaleSources, countries]);
 
   const filteredPrevData = useMemo(() => {
     let result = prevData;
-    if (countryFilter !== "all") result = result.filter(ad => isAdCountry(ad, countryFilter));
-    if (nichoFilter !== "all") result = result.filter(ad => isAdNicho(ad, nichoFilter));
+    if (countryFilter !== "all") result = result.filter(ad => isAdCountry(ad));
+    if (nichoFilter !== "all") result = result.filter(ad => isAdNicho(ad));
     return result;
-  }, [prevData, countryFilter, nichoFilter]);
+  }, [prevData, countryFilter, nichoFilter, countries]);
+
 
   const filteredPrevSaleSources = useMemo(() => {
     return new Set(
