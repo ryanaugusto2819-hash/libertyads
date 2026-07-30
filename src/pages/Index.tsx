@@ -68,7 +68,7 @@ const DEFAULT_RATES: Record<string, number> = {
   PYG: PYG_TO_BRL,
 };
 
-const STATIC_BMS = ["bm11"];
+const LEGACY_BMS = ["bm11"]; // contas antigas em variáveis de ambiente (somente do administrador)
 
 const applyUsdConversion = (items: any[]) =>
   items.map((item) => {
@@ -633,7 +633,7 @@ const Index = () => {
             <Tabs value={bmFilter} onValueChange={(v) => setBmFilter(v as any)}>
               <TabsList className="h-8">
                 <TabsTrigger value="all" className="text-xs px-3 h-6">Todas</TabsTrigger>
-                {STATIC_BMS.map((slug) => (
+                {(isAdmin ? LEGACY_BMS : []).map((slug) => (
                   <TabsTrigger key={slug} value={slug} className="text-xs px-3 h-6">
                     {slug.replace("bm", "BM ")}
                   </TabsTrigger>
@@ -661,14 +661,12 @@ const Index = () => {
                 ))}
               </TabsList>
             </Tabs>
-            {isAdmin && (
-              <SettingsDialog
-                niches={niches}
-                countries={countries}
-                bmAccounts={bmAccounts}
-                onChanged={reloadSettings}
-              />
-            )}
+            <SettingsDialog
+              niches={niches}
+              countries={countries}
+              bmAccounts={bmAccounts}
+              onChanged={reloadSettings}
+            />
 
             <button
               onClick={fetchData}
@@ -860,7 +858,7 @@ const Index = () => {
                 Detalhamento
               </h2>
             </div>
-            <AdsTable ads={deduplicatedAds} salesData={filteredSalesData} prevAds={deduplicatedPrevAds} prevSalesData={filteredPrevSalesData} isAdmin={isAdmin} campaignBudgets={campaignBudgets} bmFilter={bmFilter} currencyRates={currencyRates} />
+            <AdsTable ads={deduplicatedAds} salesData={filteredSalesData} prevAds={deduplicatedPrevAds} prevSalesData={filteredPrevSalesData} isAdmin={true} campaignBudgets={campaignBudgets} bmFilter={bmFilter} currencyRates={currencyRates} />
           </section>
         )}
 
