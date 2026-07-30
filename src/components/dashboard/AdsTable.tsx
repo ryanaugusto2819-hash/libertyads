@@ -362,14 +362,8 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
       const spend = ad.spend ?? ad.spent ?? 0;
       const leads = ad.leads ?? 0;
       const sales = matchedSales.reduce((sum, s) => sum + Number(s.sales || 0), 0);
-      const revenue = matchedSales.reduce((sum, s) => {
-        const raw = Number(s.revenue || 0);
-        const currency = (s.currency || "").toUpperCase();
-        if (currency === "UYU") return sum + raw / 7.93;
-        if (currency === "ARS") return sum + raw / 278.39;
-        if (currency === "PYG") return sum + raw / 1176.54;
-        return sum + raw;
-      }, 0);
+      const revenue = matchedSales.reduce((sum, s) => sum + convertRev(s), 0);
+
       const cpl = ad.costPerLead ?? ad.cpl ?? (leads > 0 ? spend / leads : 0);
       const cpa = ad.cpa ?? (sales > 0 ? spend / sales : 0);
       const convRate = leads > 0 ? (sales / leads) * 100 : 0;
