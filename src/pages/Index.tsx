@@ -122,31 +122,30 @@ const normalizeMetaErrorMessage = (message: string) => {
   return message;
 };
 
-const hasCountryTag = (value: string, tag: "BR" | "UY" | "AR" | "PY") => {
+const hasCountryTag = (value: string, tag: string) => {
   const normalized = (value || "").toUpperCase();
-  return new RegExp(`(^|[^A-Z0-9])${tag}([^A-Z0-9]|$)`).test(normalized);
+  const safeTag = tag.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!safeTag) return false;
+  return new RegExp(`(^|[^A-Z0-9])${safeTag}([^A-Z0-9]|$)`).test(normalized);
 };
 
-const getAdCountryFlags = (ad: any) => {
-  const source = [ad.campaign_name, ad.ad_name, ad.name].filter(Boolean).join(" ");
-  return {
-    isPY: hasCountryTag(source, "PY") || /PARAGUAI|PARAGUAY/i.test(source),
-    isAR: hasCountryTag(source, "AR") || /ARGENTINA/i.test(source),
-    isUY: hasCountryTag(source, "UY") || /URUGUAI|URUGUAY/i.test(source),
-    isBR: hasCountryTag(source, "BR") || /BRASIL|BRAZIL/i.test(source),
-  };
+const COUNTRY_ALIASES: Record<string, RegExp> = {
+  BR: /BRASIL|BRAZIL/i,
+  UY: /URUGUAI|URUGUAY/i,
+  AR: /ARGENTINA/i,
+  PY: /PARAGUAI|PARAGUAY/i,
 };
 
-const getSaleCountryFlags = (sale: any) => {
-  const country = (sale.country || "").toLowerCase().trim();
-  const source = [sale.creative, sale.campaign].filter(Boolean).join(" ");
-  return {
-    isPY: country.includes("paragua") || country === "py" || hasCountryTag(source, "PY"),
-    isAR: country.includes("argentin") || country === "ar" || hasCountryTag(source, "AR"),
-    isUY: country.includes("uruguai") || country.includes("uruguay") || country === "uy" || hasCountryTag(source, "UY"),
-    isBR: country.includes("brasil") || country.includes("brazil") || country === "br" || hasCountryTag(source, "BR"),
-  };
+const adSource = (ad: any) => [ad.campaign_name, ad.ad_name, ad.name].filter(Boolean).join(" ");
+const saleSource = (sale: any) => [sale.creative, sale.campaign, sale.country].filter(Boolean).join(" ");
+
+const matchesCountry = (source: string, country: { code: string; name: string }) => {
+  if (hasCountryTag(source, country.code)) return true;
+  if (COUNTRY_ALIASES[country.code.toUpperCase()]?.test(source)) return true;
+  const name = (country.name || "").trim();
+  return name.length > 2 && new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(source);
 };
+
 
 const SkeletonCard = () => (
   <div className="glass-card p-5 relative overflow-hidden">
