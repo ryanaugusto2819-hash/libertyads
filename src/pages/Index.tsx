@@ -558,38 +558,43 @@ const Index = () => {
             <Tabs value={bmFilter} onValueChange={(v) => setBmFilter(v as any)}>
               <TabsList className="h-8">
                 <TabsTrigger value="all" className="text-xs px-3 h-6">Todas</TabsTrigger>
-                <TabsTrigger value="bm1" className="text-xs px-3 h-6">BM 1</TabsTrigger>
-                <TabsTrigger value="bm2" className="text-xs px-3 h-6">BM 2</TabsTrigger>
-                <TabsTrigger value="bm3" className="text-xs px-3 h-6">BM 3</TabsTrigger>
-                <TabsTrigger value="bm4" className="text-xs px-3 h-6">BM 4</TabsTrigger>
-                <TabsTrigger value="bm5" className="text-xs px-3 h-6">BM 5</TabsTrigger>
-                <TabsTrigger value="bm6" className="text-xs px-3 h-6">BM 6</TabsTrigger>
-                <TabsTrigger value="bm7" className="text-xs px-3 h-6">BM 7</TabsTrigger>
-                <TabsTrigger value="bm8" className="text-xs px-3 h-6">BM 8</TabsTrigger>
-                <TabsTrigger value="bm9" className="text-xs px-3 h-6">BM 9</TabsTrigger>
-                <TabsTrigger value="bm10" className="text-xs px-3 h-6">BM 10</TabsTrigger>
-                <TabsTrigger value="bm11" className="text-xs px-3 h-6">BM 11</TabsTrigger>
+                {STATIC_BMS.map((slug) => (
+                  <TabsTrigger key={slug} value={slug} className="text-xs px-3 h-6">
+                    {slug.replace("bm", "BM ")}
+                  </TabsTrigger>
+                ))}
+                {bmAccounts.map((b) => (
+                  <TabsTrigger key={b.id} value={b.slug} className="text-xs px-3 h-6">{b.label}</TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+            <Tabs value={countryFilter} onValueChange={(v) => setCountryFilter(v)}>
+              <TabsList className="h-8">
+                <TabsTrigger value="all" className="text-xs px-3 h-6">Todos</TabsTrigger>
+                {countries.map((c) => (
+                  <TabsTrigger key={c.id} value={c.code} className="text-xs px-3 h-6">
+                    {c.flag} {c.name}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+            <Tabs value={nichoFilter} onValueChange={(v) => setNichoFilter(v)}>
+              <TabsList className="h-8">
+                <TabsTrigger value="all" className="text-xs px-3 h-6">Todos</TabsTrigger>
+                {niches.map((n) => (
+                  <TabsTrigger key={n.id} value={n.keyword} className="text-xs px-3 h-6">{n.name}</TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+            {isAdmin && (
+              <SettingsDialog
+                niches={niches}
+                countries={countries}
+                bmAccounts={bmAccounts}
+                onChanged={reloadSettings}
+              />
+            )}
 
-              </TabsList>
-            </Tabs>
-            <Tabs value={countryFilter} onValueChange={(v) => setCountryFilter(v as any)}>
-              <TabsList className="h-8">
-                <TabsTrigger value="all" className="text-xs px-3 h-6">Todos</TabsTrigger>
-                <TabsTrigger value="uruguay" className="text-xs px-3 h-6">🇺🇾 Uruguai</TabsTrigger>
-                <TabsTrigger value="brasil" className="text-xs px-3 h-6">🇧🇷 Brasil</TabsTrigger>
-                <TabsTrigger value="argentina" className="text-xs px-3 h-6">🇦🇷 Argentina</TabsTrigger>
-                <TabsTrigger value="paraguai" className="text-xs px-3 h-6">🇵🇾 Paraguai</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            <Tabs value={nichoFilter} onValueChange={(v) => setNichoFilter(v as any)}>
-              <TabsList className="h-8">
-                <TabsTrigger value="all" className="text-xs px-3 h-6">Todos</TabsTrigger>
-                <TabsTrigger value="adulto" className="text-xs px-3 h-6">Adulto</TabsTrigger>
-                <TabsTrigger value="emagrecimento" className="text-xs px-3 h-6">Emagrecimento</TabsTrigger>
-                <TabsTrigger value="prostata" className="text-xs px-3 h-6">Próstata</TabsTrigger>
-                <TabsTrigger value="diabetes" className="text-xs px-3 h-6">Diabetes</TabsTrigger>
-              </TabsList>
-            </Tabs>
             <button
               onClick={fetchData}
               disabled={loading}
