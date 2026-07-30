@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { DollarSign, Users, Target, BarChart3, Percent, TrendingUp, Receipt, Wallet, Activity, RefreshCw, Eye, EyeOff, Clock, Shield, LogOut, Bot, ChevronsUpDown } from "lucide-react";
+import { DollarSign, Users, Target, BarChart3, Percent, TrendingUp, Receipt, Wallet, Activity, RefreshCw, Eye, EyeOff, Clock, Shield, LogOut, Bot, ChevronsUpDown, CalendarRange } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -176,6 +176,27 @@ const Index = () => {
   const navigate = useNavigate();
   const [range, setRange] = useState("today");
   const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | undefined>();
+
+  const RANGE_LABELS: Record<string, string> = {
+    today: "Hoje",
+    yesterday: "Ontem",
+    "7days": "Últimos 7 dias",
+    "30days": "Últimos 30 dias",
+    custom: "Personalizado",
+  };
+  const periodLabel = RANGE_LABELS[range] ?? range;
+  const periodSubLabel = useMemo(() => {
+    const today = new Date();
+    let from = today;
+    let to = today;
+    if (range === "yesterday") { from = subDays(today, 1); to = subDays(today, 1); }
+    else if (range === "7days") { from = subDays(today, 6); }
+    else if (range === "30days") { from = subDays(today, 29); }
+    else if (range === "custom" && customRange) { from = customRange.from; to = customRange.to; }
+    const f = format(from, "dd/MM");
+    const t = format(to, "dd/MM");
+    return f === t ? f : `${f} — ${t}`;
+  }, [range, customRange]);
   const [data, setData] = useState<any[]>([]);
   const [salesData, setSalesData] = useState<any[]>([]);
   const [prevData, setPrevData] = useState<any[]>([]);
@@ -754,10 +775,20 @@ const Index = () => {
 
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-              {Array.from({ length: 9 }).map((_, i) => <SkeletonCard key={i} />)}
+              {Array.from({ length: 10 }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div className="animate-fade-in-up">
+                <KPICard
+                  title="Período"
+                  value={periodLabel}
+                  icon={CalendarRange}
+                  variant="purple"
+                  trend={periodSubLabel}
+                  trendNeutral
+                />
+              </div>
               <div className="animate-fade-in-up" style={{ animationDelay: "0ms" }}>
                 <KPICard title="Valor Gasto" value={`R$ ${fmt(kpi.totalSpent)}`} icon={DollarSign} variant="blue"
                   trend={spentTrend.trend} trendUp={spentTrend.trendUp} trendNeutral={spentTrend.trendNeutral}
