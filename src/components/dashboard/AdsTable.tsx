@@ -89,6 +89,14 @@ interface BudgetHistoryEntry {
   created_at: string;
 }
 
+type MetricKey = "sales" | "revenue" | "leads" | "spend";
+
+interface ManualOverride {
+  value: number;
+  original_value: number | null;
+  updated_at: string;
+}
+
 const DEFAULT_RATES: Record<string, number> = { UYU: 7.93, ARS: 278.39, PYG: 1176.54 };
 
 const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdmin = false, campaignBudgets = {}, bmFilter, currencyRates }: AdsTableProps) => {
