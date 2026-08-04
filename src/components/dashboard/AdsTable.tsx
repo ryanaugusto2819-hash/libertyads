@@ -840,7 +840,7 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
             </thead>
             <tbody>
               {filteredRows.map((row, i) => {
-                const { ad, adName, spend, leads, sales, revenue, cpl, cpa, convRate, avgTicket, roi, lucro70, lucro60, lucro50, lucro40 } = row;
+                const { ad, adName, rowKey, autos, spend, leads, sales, revenue, cpl, cpa, convRate, avgTicket, roi, lucro70, lucro60, lucro50, lucro40 } = row;
                 const video = adVideos[adName];
                 const campaignIds: string[] = ad.campaignIds || (ad.campaign_id ? [ad.campaign_id] : []);
                 // Get campaign status from budgets data (real Meta status)
