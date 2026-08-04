@@ -616,6 +616,90 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
     );
   };
 
+  const renderEditableMetric = (opts: {
+    rowKey: string;
+    metric: MetricKey;
+    label: string;
+    current: number;
+    auto: number;
+    prev?: number;
+    prefix?: string;
+    integer?: boolean;
+  }) => {
+    const { rowKey, metric, label, current, auto, prev, prefix = "", integer = false } = opts;
+    const key = `${rowKey}|${metric}`;
+    const ov = overrides[key];
+    const show = (n: number) => (integer ? Math.round(n).toLocaleString("pt-BR") : `${prefix}${fmt(n)}`);
+    return (
+      <Popover
+        open={editingMetric === key}
+        onOpenChange={(open) => {
+          if (open) {
+            setEditingMetric(key);
+            setMetricValue(String(integer ? Math.round(current) : Number(current.toFixed(2))));
+          } else {
+            setEditingMetric(null);
+          }
+        }}
+      >
+        <PopoverTrigger asChild>
+          <button className="w-full text-right hover:text-primary transition-colors" title="Clique para editar manualmente">
+            <span className={ov ? "text-primary font-semibold" : ""}>{show(current)}</span>
+            {ov && <Pencil className="h-2.5 w-2.5 inline ml-1 text-primary" />}
+            {ov && (
+              <div className="text-[10px] text-muted-foreground/60 mt-0.5 line-through" title="Valor original">
+                {show(ov.original_value ?? auto)}
+              </div>
+            )}
+            {!ov && prev != null && prev !== 0 && (
+              <div className="text-[10px] text-muted-foreground/60 mt-0.5">{show(prev)}</div>
+            )}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-60 p-3" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <div className="space-y-2 text-left">
+            <p className="text-xs font-medium text-muted-foreground">{label} (manual)</p>
+            <p className="text-[10px] text-muted-foreground/70">Automático: {show(ov?.original_value ?? auto)}</p>
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="number"
+                step={integer ? "1" : "0.01"}
+                min="0"
+                value={metricValue}
+                onChange={(e) => setMetricValue(e.target.value)}
+                className="h-8 text-sm"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") saveOverride(rowKey, metric, metricValue, ov?.original_value ?? auto);
+                }}
+              />
+              <Button
+                size="icon"
+                className="h-8 w-8 flex-shrink-0"
+                disabled={savingMetric === key || metricValue === ""}
+                onClick={() => saveOverride(rowKey, metric, metricValue, ov?.original_value ?? auto)}
+              >
+                {savingMetric === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+              </Button>
+            </div>
+            {ov && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="w-full h-7 text-xs text-muted-foreground hover:text-foreground"
+                disabled={savingMetric === key}
+                onClick={() => revertOverride(rowKey, metric)}
+              >
+                <RotateCcw className="h-3 w-3 mr-1" /> Reverter para o automático
+              </Button>
+            )}
+            <p className="text-[10px] text-muted-foreground/60">CPA, ticket, taxa de conversão, ROAS e lucro são recalculados automaticamente.</p>
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  };
+
   const ProfitCompareCell = ({ current, prev }: { current: number; prev?: number }) => {
     const hasPrev = prev != null && prev !== 0;
     return (
