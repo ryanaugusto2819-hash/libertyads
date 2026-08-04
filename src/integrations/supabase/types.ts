@@ -334,6 +334,39 @@ export type Database = {
         }
         Relationships: []
       }
+      manual_metric_overrides: {
+        Row: {
+          created_at: string
+          id: string
+          metric: string
+          original_value: number | null
+          row_key: string
+          updated_at: string
+          user_id: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metric: string
+          original_value?: number | null
+          row_key: string
+          updated_at?: string
+          user_id?: string
+          value: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metric?: string
+          original_value?: number | null
+          row_key?: string
+          updated_at?: string
+          user_id?: string
+          value?: number
+        }
+        Relationships: []
+      }
       niches: {
         Row: {
           created_at: string

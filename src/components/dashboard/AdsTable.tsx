@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Video, Upload, Trash2, Play, TrendingUp, TrendingDown, Minus, Search, ArrowUp, ArrowDown, ArrowUpDown, DollarSign, Check, X, Loader2, History } from "lucide-react";
+import { Video, Upload, Trash2, Play, TrendingUp, TrendingDown, Minus, Search, ArrowUp, ArrowDown, ArrowUpDown, DollarSign, Check, X, Loader2, History, Pencil, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -89,6 +89,14 @@ interface BudgetHistoryEntry {
   created_at: string;
 }
 
+type MetricKey = "sales" | "revenue" | "leads" | "spend";
+
+interface ManualOverride {
+  value: number;
+  original_value: number | null;
+  updated_at: string;
+}
+
 const DEFAULT_RATES: Record<string, number> = { UYU: 7.93, ARS: 278.39, PYG: 1176.54 };
 
 const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdmin = false, campaignBudgets = {}, bmFilter, currencyRates }: AdsTableProps) => {
@@ -108,7 +116,94 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
   const [togglingStatus, setTogglingStatus] = useState<string | null>(null);
   const [localStatuses, setLocalStatuses] = useState<Record<string, string>>({});
   const [budgetHistory, setBudgetHistory] = useState<Record<string, BudgetHistoryEntry>>({});
+  const [overrides, setOverrides] = useState<Record<string, ManualOverride>>({});
+  const [editingMetric, setEditingMetric] = useState<string | null>(null);
+  const [metricValue, setMetricValue] = useState("");
+  const [savingMetric, setSavingMetric] = useState<string | null>(null);
   const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user?.id) return;
+    (async () => {
+      const { data } = await supabase
+        .from("manual_metric_overrides")
+        .select("row_key, metric, value, original_value, updated_at")
+        .eq("user_id", user.id);
+      if (data) {
+        const map: Record<string, ManualOverride> = {};
+        for (const row of data as any[]) {
+          map[`${row.row_key}|${row.metric}`] = {
+            value: Number(row.value),
+            original_value: row.original_value == null ? null : Number(row.original_value),
+            updated_at: row.updated_at,
+          };
+        }
+        setOverrides(map);
+      }
+    })();
+  }, [user?.id]);
+
+  const saveOverride = async (rowKey: string, metric: MetricKey, raw: string, originalValue: number) => {
+    const value = parseFloat(raw.replace(",", "."));
+    if (isNaN(value) || value < 0) {
+      toast.error("Valor inválido");
+      return;
+    }
+    if (!user?.id) return;
+    const key = `${rowKey}|${metric}`;
+    setSavingMetric(key);
+    try {
+      const existing = overrides[key];
+      const original = existing?.original_value ?? originalValue;
+      const { error } = await supabase
+        .from("manual_metric_overrides")
+        .upsert(
+          { user_id: user.id, row_key: rowKey, metric, value, original_value: original },
+          { onConflict: "user_id,row_key,metric" },
+        );
+      if (error) throw error;
+      setOverrides((prev) => ({
+        ...prev,
+        [key]: { value, original_value: original, updated_at: new Date().toISOString() },
+      }));
+      toast.success("Valor ajustado manualmente — métricas recalculadas");
+      setEditingMetric(null);
+      setMetricValue("");
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Erro ao salvar ajuste manual");
+    } finally {
+      setSavingMetric(null);
+    }
+  };
+
+  const revertOverride = async (rowKey: string, metric: MetricKey) => {
+    if (!user?.id) return;
+    const key = `${rowKey}|${metric}`;
+    setSavingMetric(key);
+    try {
+      const { error } = await supabase
+        .from("manual_metric_overrides")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("row_key", rowKey)
+        .eq("metric", metric);
+      if (error) throw error;
+      setOverrides((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      toast.success("Valor original restaurado");
+      setEditingMetric(null);
+      setMetricValue("");
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Erro ao reverter ajuste");
+    } finally {
+      setSavingMetric(null);
+    }
+  };
 
   useEffect(() => {
     if (!user?.id || !isAdmin) return;
@@ -324,10 +419,22 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
         }
       }
     });
-    const spend = ad.spend ?? ad.spent ?? 0;
-    const leads = ad.leads ?? 0;
-    const cpl = ad.costPerLead ?? ad.cpl ?? (leads > 0 ? spend / leads : 0);
-    const cpa = ad.cpa ?? (sales > 0 ? spend / sales : 0);
+    const rowKey = adCampaignNorm || adNameNorm;
+    const ov = (metric: MetricKey, auto: number) => {
+      const o = overrides[`${rowKey}|${metric}`];
+      return o ? o.value : auto;
+    };
+    const autoSales = sales;
+    const autoRevenue = revenue;
+    const autoSpend = ad.spend ?? ad.spent ?? 0;
+    const autoLeads = ad.leads ?? 0;
+    sales = ov("sales", autoSales);
+    revenue = ov("revenue", autoRevenue);
+    const spend = ov("spend", autoSpend);
+    const leads = ov("leads", autoLeads);
+    const autos = { sales: autoSales, revenue: autoRevenue, spend: autoSpend, leads: autoLeads };
+    const cpl = leads > 0 ? spend / leads : 0;
+    const cpa = sales > 0 ? spend / sales : 0;
     const convRate = leads > 0 ? (sales / leads) * 100 : 0;
     const avgTicket = sales > 0 ? revenue / sales : 0;
     const roi = spend > 0 ? revenue / spend : 0;
@@ -337,7 +444,7 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
     const lucro40 = revenue * 0.4 - spend;
 
     const campaignName = (ad.campaign_name || "").toLowerCase().trim();
-    return { ad, adName, campaignName, spend, leads, sales, revenue, cpl, cpa, convRate, avgTicket, roi, lucro70, lucro60, lucro50, lucro40 };
+    return { ad, adName, rowKey, autos, campaignName, spend, leads, sales, revenue, cpl, cpa, convRate, avgTicket, roi, lucro70, lucro60, lucro50, lucro40 };
   });
 
   // Build previous period rows map for comparison
@@ -380,7 +487,7 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
       const campaignName = adCampaignNorm;
       const prevCampaignName = adCampaignNorm;
       const mapKey = adCampaignNorm || adNameNorm;
-      map.set(mapKey, { ad, adName, campaignName: prevCampaignName, spend, leads, sales, revenue, cpl, cpa, convRate, avgTicket, roi, lucro70, lucro60, lucro50, lucro40 });
+      map.set(mapKey, { ad, adName, rowKey: mapKey, autos: { sales, revenue, spend, leads }, campaignName: prevCampaignName, spend, leads, sales, revenue, cpl, cpa, convRate, avgTicket, roi, lucro70, lucro60, lucro50, lucro40 });
     });
     return map;
   }, [prevAds, prevSalesData, prevAllAdNames]);
@@ -506,6 +613,90 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
           </div>
         )}
       </div>
+    );
+  };
+
+  const renderEditableMetric = (opts: {
+    rowKey: string;
+    metric: MetricKey;
+    label: string;
+    current: number;
+    auto: number;
+    prev?: number;
+    prefix?: string;
+    integer?: boolean;
+  }) => {
+    const { rowKey, metric, label, current, auto, prev, prefix = "", integer = false } = opts;
+    const key = `${rowKey}|${metric}`;
+    const ov = overrides[key];
+    const show = (n: number) => (integer ? Math.round(n).toLocaleString("pt-BR") : `${prefix}${fmt(n)}`);
+    return (
+      <Popover
+        open={editingMetric === key}
+        onOpenChange={(open) => {
+          if (open) {
+            setEditingMetric(key);
+            setMetricValue(String(integer ? Math.round(current) : Number(current.toFixed(2))));
+          } else {
+            setEditingMetric(null);
+          }
+        }}
+      >
+        <PopoverTrigger asChild>
+          <button className="w-full text-right hover:text-primary transition-colors" title="Clique para editar manualmente">
+            <span className={ov ? "text-primary font-semibold" : ""}>{show(current)}</span>
+            {ov && <Pencil className="h-2.5 w-2.5 inline ml-1 text-primary" />}
+            {ov && (
+              <div className="text-[10px] text-muted-foreground/60 mt-0.5 line-through" title="Valor original">
+                {show(ov.original_value ?? auto)}
+              </div>
+            )}
+            {!ov && prev != null && prev !== 0 && (
+              <div className="text-[10px] text-muted-foreground/60 mt-0.5">{show(prev)}</div>
+            )}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-60 p-3" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <div className="space-y-2 text-left">
+            <p className="text-xs font-medium text-muted-foreground">{label} (manual)</p>
+            <p className="text-[10px] text-muted-foreground/70">Automático: {show(ov?.original_value ?? auto)}</p>
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="number"
+                step={integer ? "1" : "0.01"}
+                min="0"
+                value={metricValue}
+                onChange={(e) => setMetricValue(e.target.value)}
+                className="h-8 text-sm"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") saveOverride(rowKey, metric, metricValue, ov?.original_value ?? auto);
+                }}
+              />
+              <Button
+                size="icon"
+                className="h-8 w-8 flex-shrink-0"
+                disabled={savingMetric === key || metricValue === ""}
+                onClick={() => saveOverride(rowKey, metric, metricValue, ov?.original_value ?? auto)}
+              >
+                {savingMetric === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+              </Button>
+            </div>
+            {ov && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="w-full h-7 text-xs text-muted-foreground hover:text-foreground"
+                disabled={savingMetric === key}
+                onClick={() => revertOverride(rowKey, metric)}
+              >
+                <RotateCcw className="h-3 w-3 mr-1" /> Reverter para o automático
+              </Button>
+            )}
+            <p className="text-[10px] text-muted-foreground/60">CPA, ticket, taxa de conversão, ROAS e lucro são recalculados automaticamente.</p>
+          </div>
+        </PopoverContent>
+      </Popover>
     );
   };
 
@@ -649,7 +840,7 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
             </thead>
             <tbody>
               {filteredRows.map((row, i) => {
-                const { ad, adName, spend, leads, sales, revenue, cpl, cpa, convRate, avgTicket, roi, lucro70, lucro60, lucro50, lucro40 } = row;
+                const { ad, adName, rowKey, autos, spend, leads, sales, revenue, cpl, cpa, convRate, avgTicket, roi, lucro70, lucro60, lucro50, lucro40 } = row;
                 const video = adVideos[adName];
                 const campaignIds: string[] = ad.campaignIds || (ad.campaign_id ? [ad.campaign_id] : []);
                 // Get campaign status from budgets data (real Meta status)
@@ -809,7 +1000,9 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
                       })()}
                     </td>
                     {/* Custos */}
-                    <td className={`${tc} bg-primary/[0.01] font-medium`}><MetricCell current={spend} prev={prev?.spend} prefix="R$" /></td>
+                    <td className={`${tc} bg-primary/[0.01] font-medium`}>
+                      {renderEditableMetric({ rowKey, metric: "spend", label: "Gasto", current: spend, auto: autos.spend, prev: prev?.spend, prefix: "R$" })}
+                    </td>
                     <td className={`${tc} bg-primary/[0.01]`}>
                       <div>
                         <span className={cpa >= 5 && cpa <= 100 ? "text-profit" : cpa > 100 && cpa <= 200 ? "text-warning" : "text-loss"}>
@@ -823,20 +1016,10 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
                     <td className={`${tc} bg-primary/[0.01] border-r border-border/[0.06]`}><MetricCell current={cpl} prev={prev?.cpl} prefix="R$" /></td>
                     {/* Conversão */}
                     <td className={`${tc} bg-info/[0.01]`}>
-                      <div>
-                        <div>{Math.round(leads)}</div>
-                        {prev && prev.leads > 0 && (
-                          <div className="text-[10px] text-muted-foreground/60 mt-0.5">{Math.round(prev.leads)}</div>
-                        )}
-                      </div>
+                      {renderEditableMetric({ rowKey, metric: "leads", label: "Leads", current: leads, auto: autos.leads, prev: prev?.leads, integer: true })}
                     </td>
                     <td className={`${tc} bg-info/[0.01]`}>
-                      <div>
-                        <div>{Math.round(sales)}</div>
-                        {prev && prev.sales > 0 && (
-                          <div className="text-[10px] text-muted-foreground/60 mt-0.5">{Math.round(prev.sales)}</div>
-                        )}
-                      </div>
+                      {renderEditableMetric({ rowKey, metric: "sales", label: "Vendas", current: sales, auto: autos.sales, prev: prev?.sales, integer: true })}
                     </td>
                     <td className={`${tc} bg-info/[0.01]`}>
 
@@ -874,7 +1057,9 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
                     <td className={`${tc} bg-warning/[0.01]`}><MetricCell current={ad.ctr ?? 0} prev={prev?.ad.ctr} suffix="%" /></td>
                     <td className={`${tc} bg-warning/[0.01] border-r border-border/[0.06]`}><MetricCell current={ad.cpm ?? 0} prev={prev?.ad.cpm} prefix="R$" /></td>
                     {/* Receita */}
-                    <td className={`${tc} bg-success/[0.01] font-semibold`}><MetricCell current={revenue} prev={prev?.revenue} prefix="R$" /></td>
+                    <td className={`${tc} bg-success/[0.01] font-semibold`}>
+                      {renderEditableMetric({ rowKey, metric: "revenue", label: "Faturamento", current: revenue, auto: autos.revenue, prev: prev?.revenue, prefix: "R$" })}
+                    </td>
                     <td className={`${tc} bg-success/[0.01] border-r border-border/[0.06]`}>
                       <div>
                         <span className={`font-semibold ${roi >= 1 ? "text-profit" : "text-loss"}`}>
