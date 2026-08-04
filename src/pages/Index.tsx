@@ -584,8 +584,111 @@ const Index = () => {
     [filteredPrevSalesData, selectedCampaigns]
   );
 
-  const kpi = useMemo(() => calcKpis(kpiAds, kpiSales, currencyRates), [kpiAds, kpiSales, currencyRates]);
+  const kpiRaw = useMemo(() => calcKpis(kpiAds, kpiSales, currencyRates), [kpiAds, kpiSales, currencyRates]);
   const prevKpi = useMemo(() => calcKpis(kpiPrevAds, kpiPrevSales, currencyRates), [kpiPrevAds, kpiPrevSales, currencyRates]);
+
+  // ===== Ajustes manuais da Visão Geral =====
+  const overviewKey = useMemo(() => {
+    const today = new Date();
+    let from = today;
+    let to = today;
+    if (range === "yesterday") { from = subDays(today, 1); to = subDays(today, 1); }
+    else if (range === "7days") { from = subDays(today, 6); }
+    else if (range === "30days") { from = subDays(today, 29); }
+    else if (range === "custom" && customRange) { from = customRange.from; to = customRange.to; }
+    return `overview|${format(from, "yyyy-MM-dd")}|${format(to, "yyyy-MM-dd")}`;
+  }, [range, customRange]);
+
+  const [overviewOverrides, setOverviewOverrides] = useState<Record<string, { value: number; original: number | null }>>({});
+  const [savingKpi, setSavingKpi] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+    (async () => {
+      const { data: rows } = await supabase
+        .from("manual_metric_overrides")
+        .select("metric, value, original_value")
+        .eq("user_id", user.id)
+        .eq("row_key", overviewKey);
+      if (!active) return;
+      const map: Record<string, { value: number; original: number | null }> = {};
+      for (const r of (rows as any[]) || []) {
+        map[r.metric] = { value: Number(r.value), original: r.original_value == null ? null : Number(r.original_value) };
+      }
+      setOverviewOverrides(map);
+    })();
+    return () => { active = false; };
+  }, [user?.id, overviewKey]);
+
+  const saveOverviewMetric = async (metric: "spend" | "leads" | "sales" | "revenue", value: number, autoValue: number) => {
+    if (!user?.id) return;
+    setSavingKpi(metric);
+    try {
+      const original = overviewOverrides[metric]?.original ?? autoValue;
+      const { error } = await supabase
+        .from("manual_metric_overrides")
+        .upsert(
+          { user_id: user.id, row_key: overviewKey, metric, value, original_value: original },
+          { onConflict: "user_id,row_key,metric" },
+        );
+      if (error) throw error;
+      setOverviewOverrides((prev) => ({ ...prev, [metric]: { value, original } }));
+      toast.success("Valor ajustado — métricas recalculadas");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao salvar ajuste manual");
+    } finally {
+      setSavingKpi(null);
+    }
+  };
+
+  const revertOverviewMetric = async (metric: string) => {
+    if (!user?.id) return;
+    setSavingKpi(metric);
+    try {
+      const { error } = await supabase
+        .from("manual_metric_overrides")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("row_key", overviewKey)
+        .eq("metric", metric);
+      if (error) throw error;
+      setOverviewOverrides((prev) => {
+        const next = { ...prev };
+        delete next[metric];
+        return next;
+      });
+      toast.success("Valor original restaurado");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao reverter ajuste");
+    } finally {
+      setSavingKpi(null);
+    }
+  };
+
+  const kpi = useMemo(() => {
+    const totalSpent = overviewOverrides.spend?.value ?? kpiRaw.totalSpent;
+    const totalLeads = overviewOverrides.leads?.value ?? kpiRaw.totalLeads;
+    const totalSales = overviewOverrides.sales?.value ?? kpiRaw.totalSales;
+    const totalRevenue = overviewOverrides.revenue?.value ?? kpiRaw.totalRevenue;
+    return {
+      totalSpent,
+      totalLeads,
+      totalSales,
+      totalRevenue,
+      costPerLead: totalLeads > 0 ? totalSpent / totalLeads : 0,
+      cpa: totalSales > 0 ? totalSpent / totalSales : 0,
+      roi: totalSpent > 0 ? totalRevenue / totalSpent : 0,
+      conversionRate: totalLeads > 0 ? (totalSales / totalLeads) * 100 : 0,
+      averageTicket: totalSales > 0 ? totalRevenue / totalSales : 0,
+      lucro70: totalRevenue * 0.7 - totalSpent,
+      lucro60: totalRevenue * 0.6 - totalSpent,
+      lucro50: totalRevenue * 0.5 - totalSpent,
+      lucro40: totalRevenue * 0.4 - totalSpent,
+    };
+  }, [kpiRaw, overviewOverrides]);
 
   // Metrics where lower is better (invert trend colors)
   const spentTrend = calcTrend(kpi.totalSpent, prevKpi.totalSpent, true);
@@ -597,6 +700,7 @@ const Index = () => {
   const roiTrend = calcTrend(kpi.roi, prevKpi.roi);
   const convTrend = calcTrend(kpi.conversionRate, prevKpi.conversionRate);
   const ticketTrend = calcTrend(kpi.averageTicket, prevKpi.averageTicket);
+
 
   return (
     <div className="min-h-screen">
