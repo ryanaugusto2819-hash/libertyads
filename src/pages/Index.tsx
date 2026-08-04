@@ -8,6 +8,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Checkbox } from "@/components/ui/checkbox";
 import { format, subDays, differenceInDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import KPICard from "@/components/dashboard/KPICard";
 import DateFilter from "@/components/dashboard/DateFilter";
 import AdsTable from "@/components/dashboard/AdsTable";
