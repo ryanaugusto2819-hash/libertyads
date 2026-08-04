@@ -8,6 +8,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Checkbox } from "@/components/ui/checkbox";
 import { format, subDays, differenceInDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import KPICard from "@/components/dashboard/KPICard";
 import DateFilter from "@/components/dashboard/DateFilter";
 import AdsTable from "@/components/dashboard/AdsTable";
@@ -172,7 +173,7 @@ const SkeletonCard = () => (
 );
 
 const Index = () => {
-  const { isAdmin, signOut } = useAuth();
+  const { isAdmin, signOut, user } = useAuth();
   const navigate = useNavigate();
   const [range, setRange] = useState("today");
   const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | undefined>();
@@ -584,8 +585,111 @@ const Index = () => {
     [filteredPrevSalesData, selectedCampaigns]
   );
 
-  const kpi = useMemo(() => calcKpis(kpiAds, kpiSales, currencyRates), [kpiAds, kpiSales, currencyRates]);
+  const kpiRaw = useMemo(() => calcKpis(kpiAds, kpiSales, currencyRates), [kpiAds, kpiSales, currencyRates]);
   const prevKpi = useMemo(() => calcKpis(kpiPrevAds, kpiPrevSales, currencyRates), [kpiPrevAds, kpiPrevSales, currencyRates]);
+
+  // ===== Ajustes manuais da Visão Geral =====
+  const overviewKey = useMemo(() => {
+    const today = new Date();
+    let from = today;
+    let to = today;
+    if (range === "yesterday") { from = subDays(today, 1); to = subDays(today, 1); }
+    else if (range === "7days") { from = subDays(today, 6); }
+    else if (range === "30days") { from = subDays(today, 29); }
+    else if (range === "custom" && customRange) { from = customRange.from; to = customRange.to; }
+    return `overview|${format(from, "yyyy-MM-dd")}|${format(to, "yyyy-MM-dd")}`;
+  }, [range, customRange]);
+
+  const [overviewOverrides, setOverviewOverrides] = useState<Record<string, { value: number; original: number | null }>>({});
+  const [savingKpi, setSavingKpi] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+    (async () => {
+      const { data: rows } = await supabase
+        .from("manual_metric_overrides")
+        .select("metric, value, original_value")
+        .eq("user_id", user.id)
+        .eq("row_key", overviewKey);
+      if (!active) return;
+      const map: Record<string, { value: number; original: number | null }> = {};
+      for (const r of (rows as any[]) || []) {
+        map[r.metric] = { value: Number(r.value), original: r.original_value == null ? null : Number(r.original_value) };
+      }
+      setOverviewOverrides(map);
+    })();
+    return () => { active = false; };
+  }, [user?.id, overviewKey]);
+
+  const saveOverviewMetric = async (metric: "spend" | "leads" | "sales" | "revenue", value: number, autoValue: number) => {
+    if (!user?.id) return;
+    setSavingKpi(metric);
+    try {
+      const original = overviewOverrides[metric]?.original ?? autoValue;
+      const { error } = await supabase
+        .from("manual_metric_overrides")
+        .upsert(
+          { user_id: user.id, row_key: overviewKey, metric, value, original_value: original },
+          { onConflict: "user_id,row_key,metric" },
+        );
+      if (error) throw error;
+      setOverviewOverrides((prev) => ({ ...prev, [metric]: { value, original } }));
+      toast.success("Valor ajustado — métricas recalculadas");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao salvar ajuste manual");
+    } finally {
+      setSavingKpi(null);
+    }
+  };
+
+  const revertOverviewMetric = async (metric: string) => {
+    if (!user?.id) return;
+    setSavingKpi(metric);
+    try {
+      const { error } = await supabase
+        .from("manual_metric_overrides")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("row_key", overviewKey)
+        .eq("metric", metric);
+      if (error) throw error;
+      setOverviewOverrides((prev) => {
+        const next = { ...prev };
+        delete next[metric];
+        return next;
+      });
+      toast.success("Valor original restaurado");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao reverter ajuste");
+    } finally {
+      setSavingKpi(null);
+    }
+  };
+
+  const kpi = useMemo(() => {
+    const totalSpent = overviewOverrides.spend?.value ?? kpiRaw.totalSpent;
+    const totalLeads = overviewOverrides.leads?.value ?? kpiRaw.totalLeads;
+    const totalSales = overviewOverrides.sales?.value ?? kpiRaw.totalSales;
+    const totalRevenue = overviewOverrides.revenue?.value ?? kpiRaw.totalRevenue;
+    return {
+      totalSpent,
+      totalLeads,
+      totalSales,
+      totalRevenue,
+      costPerLead: totalLeads > 0 ? totalSpent / totalLeads : 0,
+      cpa: totalSales > 0 ? totalSpent / totalSales : 0,
+      roi: totalSpent > 0 ? totalRevenue / totalSpent : 0,
+      conversionRate: totalLeads > 0 ? (totalSales / totalLeads) * 100 : 0,
+      averageTicket: totalSales > 0 ? totalRevenue / totalSales : 0,
+      lucro70: totalRevenue * 0.7 - totalSpent,
+      lucro60: totalRevenue * 0.6 - totalSpent,
+      lucro50: totalRevenue * 0.5 - totalSpent,
+      lucro40: totalRevenue * 0.4 - totalSpent,
+    };
+  }, [kpiRaw, overviewOverrides]);
 
   // Metrics where lower is better (invert trend colors)
   const spentTrend = calcTrend(kpi.totalSpent, prevKpi.totalSpent, true);
@@ -597,6 +701,7 @@ const Index = () => {
   const roiTrend = calcTrend(kpi.roi, prevKpi.roi);
   const convTrend = calcTrend(kpi.conversionRate, prevKpi.conversionRate);
   const ticketTrend = calcTrend(kpi.averageTicket, prevKpi.averageTicket);
+
 
   return (
     <div className="min-h-screen">
@@ -790,12 +895,20 @@ const Index = () => {
               <div className="animate-fade-in-up" style={{ animationDelay: "0ms" }}>
                 <KPICard title="Valor Gasto" value={`R$ ${fmt(kpi.totalSpent)}`} icon={DollarSign} variant="blue"
                   trend={spentTrend.trend} trendUp={spentTrend.trendUp} trendNeutral={spentTrend.trendNeutral}
-                  previousValue={`R$ ${fmt(prevKpi.totalSpent)}`} hidden={hideValues} />
+                  previousValue={`R$ ${fmt(prevKpi.totalSpent)}`} hidden={hideValues}
+                  editable rawValue={kpi.totalSpent} autoValue={`R$ ${fmt(kpiRaw.totalSpent)}`}
+                  overridden={!!overviewOverrides.spend} saving={savingKpi === "spend"}
+                  onSaveValue={(v) => saveOverviewMetric("spend", v, kpiRaw.totalSpent)}
+                  onRevertValue={() => revertOverviewMetric("spend")} />
               </div>
               <div className="animate-fade-in-up" style={{ animationDelay: "50ms" }}>
                 <KPICard title="Faturamento" value={`R$ ${fmt(kpi.totalRevenue)}`} icon={Wallet} variant="green"
                   trend={revenueTrend.trend} trendUp={revenueTrend.trendUp} trendNeutral={revenueTrend.trendNeutral}
-                  previousValue={`R$ ${fmt(prevKpi.totalRevenue)}`} hidden={hideValues} />
+                  previousValue={`R$ ${fmt(prevKpi.totalRevenue)}`} hidden={hideValues}
+                  editable rawValue={kpi.totalRevenue} autoValue={`R$ ${fmt(kpiRaw.totalRevenue)}`}
+                  overridden={!!overviewOverrides.revenue} saving={savingKpi === "revenue"}
+                  onSaveValue={(v) => saveOverviewMetric("revenue", v, kpiRaw.totalRevenue)}
+                  onRevertValue={() => revertOverviewMetric("revenue")} />
               </div>
               <div className="animate-fade-in-up" style={{ animationDelay: "100ms" }}>
                 <KPICard title="ROAS" value={`${fmt(kpi.roi)}x`} icon={Percent} variant="purple"
@@ -805,7 +918,11 @@ const Index = () => {
               <div className="animate-fade-in-up" style={{ animationDelay: "150ms" }}>
                 <KPICard title="Vendas" value={kpi.totalSales.toLocaleString("pt-BR")} icon={Receipt} variant="cyan"
                   trend={salesTrend.trend} trendUp={salesTrend.trendUp} trendNeutral={salesTrend.trendNeutral}
-                  previousValue={prevKpi.totalSales.toLocaleString("pt-BR")} hidden={hideValues} />
+                  previousValue={prevKpi.totalSales.toLocaleString("pt-BR")} hidden={hideValues}
+                  editable rawValue={kpi.totalSales} autoValue={kpiRaw.totalSales.toLocaleString("pt-BR")}
+                  overridden={!!overviewOverrides.sales} saving={savingKpi === "sales"}
+                  onSaveValue={(v) => saveOverviewMetric("sales", v, kpiRaw.totalSales)}
+                  onRevertValue={() => revertOverviewMetric("sales")} />
               </div>
               <div className="animate-fade-in-up" style={{ animationDelay: "200ms" }}>
                 <KPICard title="Ticket Médio" value={`R$ ${fmt(kpi.averageTicket)}`} icon={TrendingUp} variant="green"
@@ -815,7 +932,11 @@ const Index = () => {
               <div className="animate-fade-in-up" style={{ animationDelay: "250ms" }}>
                 <KPICard title="Leads" value={kpi.totalLeads.toLocaleString("pt-BR")} icon={Users} variant="blue"
                   trend={leadsTrend.trend} trendUp={leadsTrend.trendUp} trendNeutral={leadsTrend.trendNeutral}
-                  previousValue={prevKpi.totalLeads.toLocaleString("pt-BR")} hidden={hideValues} />
+                  previousValue={prevKpi.totalLeads.toLocaleString("pt-BR")} hidden={hideValues}
+                  editable rawValue={kpi.totalLeads} autoValue={kpiRaw.totalLeads.toLocaleString("pt-BR")}
+                  overridden={!!overviewOverrides.leads} saving={savingKpi === "leads"}
+                  onSaveValue={(v) => saveOverviewMetric("leads", v, kpiRaw.totalLeads)}
+                  onRevertValue={() => revertOverviewMetric("leads")} />
               </div>
               <div className="animate-fade-in-up" style={{ animationDelay: "300ms" }}>
                 <KPICard title="Custo / Lead" value={`R$ ${fmt(kpi.costPerLead)}`} icon={Target} variant="orange"
