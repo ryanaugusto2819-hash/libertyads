@@ -419,10 +419,22 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
         }
       }
     });
-    const spend = ad.spend ?? ad.spent ?? 0;
-    const leads = ad.leads ?? 0;
-    const cpl = ad.costPerLead ?? ad.cpl ?? (leads > 0 ? spend / leads : 0);
-    const cpa = ad.cpa ?? (sales > 0 ? spend / sales : 0);
+    const rowKey = adCampaignNorm || adNameNorm;
+    const ov = (metric: MetricKey, auto: number) => {
+      const o = overrides[`${rowKey}|${metric}`];
+      return o ? o.value : auto;
+    };
+    const autoSales = sales;
+    const autoRevenue = revenue;
+    const autoSpend = ad.spend ?? ad.spent ?? 0;
+    const autoLeads = ad.leads ?? 0;
+    sales = ov("sales", autoSales);
+    revenue = ov("revenue", autoRevenue);
+    const spend = ov("spend", autoSpend);
+    const leads = ov("leads", autoLeads);
+    const autos = { sales: autoSales, revenue: autoRevenue, spend: autoSpend, leads: autoLeads };
+    const cpl = leads > 0 ? spend / leads : 0;
+    const cpa = sales > 0 ? spend / sales : 0;
     const convRate = leads > 0 ? (sales / leads) * 100 : 0;
     const avgTicket = sales > 0 ? revenue / sales : 0;
     const roi = spend > 0 ? revenue / spend : 0;
@@ -432,7 +444,7 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
     const lucro40 = revenue * 0.4 - spend;
 
     const campaignName = (ad.campaign_name || "").toLowerCase().trim();
-    return { ad, adName, campaignName, spend, leads, sales, revenue, cpl, cpa, convRate, avgTicket, roi, lucro70, lucro60, lucro50, lucro40 };
+    return { ad, adName, rowKey, autos, campaignName, spend, leads, sales, revenue, cpl, cpa, convRate, avgTicket, roi, lucro70, lucro60, lucro50, lucro40 };
   });
 
   // Build previous period rows map for comparison
