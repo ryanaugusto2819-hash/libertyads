@@ -108,7 +108,94 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
   const [togglingStatus, setTogglingStatus] = useState<string | null>(null);
   const [localStatuses, setLocalStatuses] = useState<Record<string, string>>({});
   const [budgetHistory, setBudgetHistory] = useState<Record<string, BudgetHistoryEntry>>({});
+  const [overrides, setOverrides] = useState<Record<string, ManualOverride>>({});
+  const [editingMetric, setEditingMetric] = useState<string | null>(null);
+  const [metricValue, setMetricValue] = useState("");
+  const [savingMetric, setSavingMetric] = useState<string | null>(null);
   const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user?.id) return;
+    (async () => {
+      const { data } = await supabase
+        .from("manual_metric_overrides")
+        .select("row_key, metric, value, original_value, updated_at")
+        .eq("user_id", user.id);
+      if (data) {
+        const map: Record<string, ManualOverride> = {};
+        for (const row of data as any[]) {
+          map[`${row.row_key}|${row.metric}`] = {
+            value: Number(row.value),
+            original_value: row.original_value == null ? null : Number(row.original_value),
+            updated_at: row.updated_at,
+          };
+        }
+        setOverrides(map);
+      }
+    })();
+  }, [user?.id]);
+
+  const saveOverride = async (rowKey: string, metric: MetricKey, raw: string, originalValue: number) => {
+    const value = parseFloat(raw.replace(",", "."));
+    if (isNaN(value) || value < 0) {
+      toast.error("Valor inválido");
+      return;
+    }
+    if (!user?.id) return;
+    const key = `${rowKey}|${metric}`;
+    setSavingMetric(key);
+    try {
+      const existing = overrides[key];
+      const original = existing?.original_value ?? originalValue;
+      const { error } = await supabase
+        .from("manual_metric_overrides")
+        .upsert(
+          { user_id: user.id, row_key: rowKey, metric, value, original_value: original },
+          { onConflict: "user_id,row_key,metric" },
+        );
+      if (error) throw error;
+      setOverrides((prev) => ({
+        ...prev,
+        [key]: { value, original_value: original, updated_at: new Date().toISOString() },
+      }));
+      toast.success("Valor ajustado manualmente — métricas recalculadas");
+      setEditingMetric(null);
+      setMetricValue("");
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Erro ao salvar ajuste manual");
+    } finally {
+      setSavingMetric(null);
+    }
+  };
+
+  const revertOverride = async (rowKey: string, metric: MetricKey) => {
+    if (!user?.id) return;
+    const key = `${rowKey}|${metric}`;
+    setSavingMetric(key);
+    try {
+      const { error } = await supabase
+        .from("manual_metric_overrides")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("row_key", rowKey)
+        .eq("metric", metric);
+      if (error) throw error;
+      setOverrides((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      toast.success("Valor original restaurado");
+      setEditingMetric(null);
+      setMetricValue("");
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Erro ao reverter ajuste");
+    } finally {
+      setSavingMetric(null);
+    }
+  };
 
   useEffect(() => {
     if (!user?.id || !isAdmin) return;
