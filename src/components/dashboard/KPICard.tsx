@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LucideIcon, TrendingUp, TrendingDown, Minus, Eye, EyeOff } from "lucide-react";
+import { LucideIcon, TrendingUp, TrendingDown, Minus, Eye, EyeOff, Pencil, RotateCcw, Check, X, Loader2 } from "lucide-react";
 
 interface KPICardProps {
   title: string;
@@ -11,7 +11,16 @@ interface KPICardProps {
   previousValue?: string;
   variant?: "blue" | "green" | "orange" | "purple" | "cyan" | "default";
   hidden?: boolean;
+  /** Manual editing */
+  editable?: boolean;
+  rawValue?: number;
+  autoValue?: string;
+  overridden?: boolean;
+  saving?: boolean;
+  onSaveValue?: (value: number) => void;
+  onRevertValue?: () => void;
 }
+
 
 const variantMap: Record<string, {
   neonCard: string;
