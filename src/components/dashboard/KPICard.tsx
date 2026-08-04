@@ -105,10 +105,31 @@ const KPICard = ({
   previousValue,
   variant = "default",
   hidden: globalHidden = false,
+  editable = false,
+  rawValue,
+  autoValue,
+  overridden = false,
+  saving = false,
+  onSaveValue,
+  onRevertValue,
 }: KPICardProps) => {
   const style = variantMap[variant] ?? variantMap.default;
   const [localHidden, setLocalHidden] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
   const isHidden = globalHidden || localHidden;
+
+  const startEditing = () => {
+    setDraft(rawValue != null ? String(Number(rawValue.toFixed(2))) : "");
+    setEditing(true);
+  };
+
+  const commit = () => {
+    const parsed = parseFloat(draft.replace(",", "."));
+    if (isNaN(parsed) || parsed < 0) return;
+    onSaveValue?.(parsed);
+    setEditing(false);
+  };
 
   return (
     <div
@@ -138,6 +159,24 @@ const KPICard = ({
           >
             {localHidden ? <EyeOff className="h-2.5 w-2.5" /> : <Eye className="h-2.5 w-2.5" />}
           </button>
+          {editable && !editing && !isHidden && (
+            <button
+              onClick={(e) => { e.stopPropagation(); startEditing(); }}
+              className="p-0.5 rounded text-muted-foreground/25 hover:text-muted-foreground/70 transition-colors flex-shrink-0"
+              title="Editar manualmente"
+            >
+              {saving ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Pencil className="h-2.5 w-2.5" />}
+            </button>
+          )}
+          {editable && overridden && !editing && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRevertValue?.(); }}
+              className="p-0.5 rounded text-amber-400/70 hover:text-amber-400 transition-colors flex-shrink-0"
+              title="Reverter para o valor automático"
+            >
+              <RotateCcw className="h-2.5 w-2.5" />
+            </button>
+          )}
         </div>
         <div className={style.iconBox}>
           <Icon className={`h-4.5 w-4.5 ${style.iconColor}`} style={{ width: 18, height: 18 }} />
@@ -145,18 +184,47 @@ const KPICard = ({
       </div>
 
       {/* Value */}
-      <p
-        className="font-data font-bold tracking-tight leading-none mb-3.5"
-        style={{ fontSize: "1.75rem", color: "hsl(238 40% 96%)" }}
-      >
-        {isHidden ? (
-          <span style={{ letterSpacing: "0.2em", color: "rgba(255,255,255,0.2)", fontSize: "1.3rem" }}>
-            ••••••
-          </span>
-        ) : (
-          value
-        )}
-      </p>
+      {editing ? (
+        <div className="mb-3.5 flex items-center gap-1.5">
+          <input
+            autoFocus
+            type="text"
+            inputMode="decimal"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit();
+              if (e.key === "Escape") setEditing(false);
+            }}
+            className="w-full bg-background/60 border border-border/60 rounded-md px-2 py-1 text-sm font-data outline-none focus:border-primary/60"
+          />
+          <button onClick={commit} className="p-1 rounded-md bg-primary/15 text-primary hover:bg-primary/25" title="Salvar">
+            <Check className="h-3 w-3" />
+          </button>
+          <button onClick={() => setEditing(false)} className="p-1 rounded-md bg-muted/40 text-muted-foreground hover:bg-muted/60" title="Cancelar">
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      ) : (
+        <p
+          className="font-data font-bold tracking-tight leading-none mb-3.5"
+          style={{ fontSize: "1.75rem", color: "hsl(238 40% 96%)" }}
+        >
+          {isHidden ? (
+            <span style={{ letterSpacing: "0.2em", color: "rgba(255,255,255,0.2)", fontSize: "1.3rem" }}>
+              ••••••
+            </span>
+          ) : (
+            value
+          )}
+          {overridden && !isHidden && autoValue && (
+            <span className="block text-[10px] font-normal text-muted-foreground/60 line-through mt-1">
+              auto: {autoValue}
+            </span>
+          )}
+        </p>
+      )}
+
 
       {/* Trend */}
       {trend && (
