@@ -918,7 +918,11 @@ const Index = () => {
               <div className="animate-fade-in-up" style={{ animationDelay: "150ms" }}>
                 <KPICard title="Vendas" value={kpi.totalSales.toLocaleString("pt-BR")} icon={Receipt} variant="cyan"
                   trend={salesTrend.trend} trendUp={salesTrend.trendUp} trendNeutral={salesTrend.trendNeutral}
-                  previousValue={prevKpi.totalSales.toLocaleString("pt-BR")} hidden={hideValues} />
+                  previousValue={prevKpi.totalSales.toLocaleString("pt-BR")} hidden={hideValues}
+                  editable rawValue={kpi.totalSales} autoValue={kpiRaw.totalSales.toLocaleString("pt-BR")}
+                  overridden={!!overviewOverrides.sales} saving={savingKpi === "sales"}
+                  onSaveValue={(v) => saveOverviewMetric("sales", v, kpiRaw.totalSales)}
+                  onRevertValue={() => revertOverviewMetric("sales")} />
               </div>
               <div className="animate-fade-in-up" style={{ animationDelay: "200ms" }}>
                 <KPICard title="Ticket Médio" value={`R$ ${fmt(kpi.averageTicket)}`} icon={TrendingUp} variant="green"
