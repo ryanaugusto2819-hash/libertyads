@@ -1057,7 +1057,9 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
                     <td className={`${tc} bg-warning/[0.01]`}><MetricCell current={ad.ctr ?? 0} prev={prev?.ad.ctr} suffix="%" /></td>
                     <td className={`${tc} bg-warning/[0.01] border-r border-border/[0.06]`}><MetricCell current={ad.cpm ?? 0} prev={prev?.ad.cpm} prefix="R$" /></td>
                     {/* Receita */}
-                    <td className={`${tc} bg-success/[0.01] font-semibold`}><MetricCell current={revenue} prev={prev?.revenue} prefix="R$" /></td>
+                    <td className={`${tc} bg-success/[0.01] font-semibold`}>
+                      {renderEditableMetric({ rowKey, metric: "revenue", label: "Faturamento", current: revenue, auto: autos.revenue, prev: prev?.revenue, prefix: "R$" })}
+                    </td>
                     <td className={`${tc} bg-success/[0.01] border-r border-border/[0.06]`}>
                       <div>
                         <span className={`font-semibold ${roi >= 1 ? "text-profit" : "text-loss"}`}>
