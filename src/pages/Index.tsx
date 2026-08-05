@@ -211,6 +211,7 @@ const Index = () => {
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [bmFilter, setBmFilter] = useState<string>("all");
   const [campaignBudgets, setCampaignBudgets] = useState<Record<string, { daily_budget: number; name: string; status: string }>>({});
+  const [overviewMode, setOverviewMode] = useState<"full" | "simple">("full");
   const { niches, countries, bmAccounts, reload: reloadSettings } = useDashboardSettings();
 
   const currencyRates = useMemo(
