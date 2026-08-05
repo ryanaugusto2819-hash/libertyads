@@ -836,6 +836,24 @@ const Index = () => {
                 Visão Geral
               </h2>
             </div>
+            <div className="flex items-center bg-muted/40 rounded-lg p-0.5 border border-border/60">
+              <button
+                onClick={() => setOverviewMode("full")}
+                className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors ${
+                  overviewMode === "full" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Completo
+              </button>
+              <button
+                onClick={() => setOverviewMode("simple")}
+                className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors ${
+                  overviewMode === "simple" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Resumido
+              </button>
+            </div>
             <Popover>
               <PopoverTrigger asChild>
                 <button className="h-8 w-[320px] max-w-full px-3 rounded-md border border-border bg-muted/40 text-xs flex items-center justify-between gap-2 hover:bg-muted/60 transition-colors">
