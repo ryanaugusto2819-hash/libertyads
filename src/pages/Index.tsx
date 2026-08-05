@@ -710,7 +710,7 @@ const Index = () => {
         style={{ background: "rgba(4,4,16,0.88)", backdropFilter: "blur(24px)" }}>
         {/* Top purple line */}
         <div className="absolute inset-x-0 top-0 h-px accent-bar-purple opacity-60" />
-        <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div
               className="h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -817,7 +817,7 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="max-w-[1440px] mx-auto px-6 py-8 space-y-8">
+      <main className="w-full px-6 py-8 space-y-8">
         {/* Error Banner */}
         {error && (
           <div className="glass-card p-4 flex items-center gap-3 animate-fade-in-up badge-danger rounded-xl">
