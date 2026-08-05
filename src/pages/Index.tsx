@@ -211,6 +211,7 @@ const Index = () => {
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [bmFilter, setBmFilter] = useState<string>("all");
   const [campaignBudgets, setCampaignBudgets] = useState<Record<string, { daily_budget: number; name: string; status: string }>>({});
+  const [overviewMode, setOverviewMode] = useState<"full" | "simple">("full");
   const { niches, countries, bmAccounts, reload: reloadSettings } = useDashboardSettings();
 
   const currencyRates = useMemo(
@@ -835,6 +836,24 @@ const Index = () => {
                 Visão Geral
               </h2>
             </div>
+            <div className="flex items-center bg-muted/40 rounded-lg p-0.5 border border-border/60">
+              <button
+                onClick={() => setOverviewMode("full")}
+                className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors ${
+                  overviewMode === "full" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Completo
+              </button>
+              <button
+                onClick={() => setOverviewMode("simple")}
+                className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors ${
+                  overviewMode === "simple" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Resumido
+              </button>
+            </div>
             <Popover>
               <PopoverTrigger asChild>
                 <button className="h-8 w-[320px] max-w-full px-3 rounded-md border border-border bg-muted/40 text-xs flex items-center justify-between gap-2 hover:bg-muted/60 transition-colors">
@@ -878,20 +897,22 @@ const Index = () => {
 
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-              {Array.from({ length: 10 }).map((_, i) => <SkeletonCard key={i} />)}
+              {Array.from({ length: overviewMode === "simple" ? 5 : 10 }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-              <div className="animate-fade-in-up">
-                <KPICard
-                  title="Período"
-                  value={periodLabel}
-                  icon={CalendarRange}
-                  variant="purple"
-                  trend={periodSubLabel}
-                  trendNeutral
-                />
-              </div>
+              {overviewMode === "full" && (
+                <div className="animate-fade-in-up">
+                  <KPICard
+                    title="Período"
+                    value={periodLabel}
+                    icon={CalendarRange}
+                    variant="purple"
+                    trend={periodSubLabel}
+                    trendNeutral
+                  />
+                </div>
+              )}
               <div className="animate-fade-in-up" style={{ animationDelay: "0ms" }}>
                 <KPICard title="Valor Gasto" value={`R$ ${fmt(kpi.totalSpent)}`} icon={DollarSign} variant="blue"
                   trend={spentTrend.trend} trendUp={spentTrend.trendUp} trendNeutral={spentTrend.trendNeutral}
@@ -911,11 +932,16 @@ const Index = () => {
                   onRevertValue={() => revertOverviewMetric("revenue")} />
               </div>
               <div className="animate-fade-in-up" style={{ animationDelay: "100ms" }}>
-                <KPICard title="ROAS" value={`${fmt(kpi.roi)}x`} icon={Percent} variant="purple"
-                  trend={roiTrend.trend} trendUp={roiTrend.trendUp} trendNeutral={roiTrend.trendNeutral}
-                  previousValue={`${fmt(prevKpi.roi)}x`} hidden={hideValues} />
+                <KPICard title="Ticket Médio" value={`R$ ${fmt(kpi.averageTicket)}`} icon={TrendingUp} variant="green"
+                  trend={ticketTrend.trend} trendUp={ticketTrend.trendUp} trendNeutral={ticketTrend.trendNeutral}
+                  previousValue={`R$ ${fmt(prevKpi.averageTicket)}`} hidden={hideValues} />
               </div>
               <div className="animate-fade-in-up" style={{ animationDelay: "150ms" }}>
+                <KPICard title="CPA" value={`R$ ${fmt(kpi.cpa)}`} icon={Target} variant="orange"
+                  trend={cpaTrend.trend} trendUp={cpaTrend.trendUp} trendNeutral={cpaTrend.trendNeutral}
+                  previousValue={`R$ ${fmt(prevKpi.cpa)}`} hidden={hideValues} />
+              </div>
+              <div className="animate-fade-in-up" style={{ animationDelay: "200ms" }}>
                 <KPICard title="Vendas" value={kpi.totalSales.toLocaleString("pt-BR")} icon={Receipt} variant="cyan"
                   trend={salesTrend.trend} trendUp={salesTrend.trendUp} trendNeutral={salesTrend.trendNeutral}
                   previousValue={prevKpi.totalSales.toLocaleString("pt-BR")} hidden={hideValues}
@@ -924,35 +950,34 @@ const Index = () => {
                   onSaveValue={(v) => saveOverviewMetric("sales", v, kpiRaw.totalSales)}
                   onRevertValue={() => revertOverviewMetric("sales")} />
               </div>
-              <div className="animate-fade-in-up" style={{ animationDelay: "200ms" }}>
-                <KPICard title="Ticket Médio" value={`R$ ${fmt(kpi.averageTicket)}`} icon={TrendingUp} variant="green"
-                  trend={ticketTrend.trend} trendUp={ticketTrend.trendUp} trendNeutral={ticketTrend.trendNeutral}
-                  previousValue={`R$ ${fmt(prevKpi.averageTicket)}`} hidden={hideValues} />
-              </div>
-              <div className="animate-fade-in-up" style={{ animationDelay: "250ms" }}>
-                <KPICard title="Leads" value={kpi.totalLeads.toLocaleString("pt-BR")} icon={Users} variant="blue"
-                  trend={leadsTrend.trend} trendUp={leadsTrend.trendUp} trendNeutral={leadsTrend.trendNeutral}
-                  previousValue={prevKpi.totalLeads.toLocaleString("pt-BR")} hidden={hideValues}
-                  editable rawValue={kpi.totalLeads} autoValue={kpiRaw.totalLeads.toLocaleString("pt-BR")}
-                  overridden={!!overviewOverrides.leads} saving={savingKpi === "leads"}
-                  onSaveValue={(v) => saveOverviewMetric("leads", v, kpiRaw.totalLeads)}
-                  onRevertValue={() => revertOverviewMetric("leads")} />
-              </div>
-              <div className="animate-fade-in-up" style={{ animationDelay: "300ms" }}>
-                <KPICard title="Custo / Lead" value={`R$ ${fmt(kpi.costPerLead)}`} icon={Target} variant="orange"
-                  trend={cplTrend.trend} trendUp={cplTrend.trendUp} trendNeutral={cplTrend.trendNeutral}
-                  previousValue={`R$ ${fmt(prevKpi.costPerLead)}`} hidden={hideValues} />
-              </div>
-              <div className="animate-fade-in-up" style={{ animationDelay: "350ms" }}>
-                <KPICard title="CPA" value={`R$ ${fmt(kpi.cpa)}`} icon={Target} variant="orange"
-                  trend={cpaTrend.trend} trendUp={cpaTrend.trendUp} trendNeutral={cpaTrend.trendNeutral}
-                  previousValue={`R$ ${fmt(prevKpi.cpa)}`} hidden={hideValues} />
-              </div>
-              <div className="animate-fade-in-up" style={{ animationDelay: "400ms" }}>
-                <KPICard title="Tx. Conversão" value={`${fmt(kpi.conversionRate)}%`} icon={Activity} variant="cyan"
-                  trend={convTrend.trend} trendUp={convTrend.trendUp} trendNeutral={convTrend.trendNeutral}
-                  previousValue={`${fmt(prevKpi.conversionRate)}%`} hidden={hideValues} />
-              </div>
+              {overviewMode === "full" && (
+                <>
+                  <div className="animate-fade-in-up" style={{ animationDelay: "250ms" }}>
+                    <KPICard title="ROAS" value={`${fmt(kpi.roi)}x`} icon={Percent} variant="purple"
+                      trend={roiTrend.trend} trendUp={roiTrend.trendUp} trendNeutral={roiTrend.trendNeutral}
+                      previousValue={`${fmt(prevKpi.roi)}x`} hidden={hideValues} />
+                  </div>
+                  <div className="animate-fade-in-up" style={{ animationDelay: "300ms" }}>
+                    <KPICard title="Leads" value={kpi.totalLeads.toLocaleString("pt-BR")} icon={Users} variant="blue"
+                      trend={leadsTrend.trend} trendUp={leadsTrend.trendUp} trendNeutral={leadsTrend.trendNeutral}
+                      previousValue={prevKpi.totalLeads.toLocaleString("pt-BR")} hidden={hideValues}
+                      editable rawValue={kpi.totalLeads} autoValue={kpiRaw.totalLeads.toLocaleString("pt-BR")}
+                      overridden={!!overviewOverrides.leads} saving={savingKpi === "leads"}
+                      onSaveValue={(v) => saveOverviewMetric("leads", v, kpiRaw.totalLeads)}
+                      onRevertValue={() => revertOverviewMetric("leads")} />
+                  </div>
+                  <div className="animate-fade-in-up" style={{ animationDelay: "350ms" }}>
+                    <KPICard title="Custo / Lead" value={`R$ ${fmt(kpi.costPerLead)}`} icon={Target} variant="orange"
+                      trend={cplTrend.trend} trendUp={cplTrend.trendUp} trendNeutral={cplTrend.trendNeutral}
+                      previousValue={`R$ ${fmt(prevKpi.costPerLead)}`} hidden={hideValues} />
+                  </div>
+                  <div className="animate-fade-in-up" style={{ animationDelay: "400ms" }}>
+                    <KPICard title="Tx. Conversão" value={`${fmt(kpi.conversionRate)}%`} icon={Activity} variant="cyan"
+                      trend={convTrend.trend} trendUp={convTrend.trendUp} trendNeutral={convTrend.trendNeutral}
+                      previousValue={`${fmt(prevKpi.conversionRate)}%`} hidden={hideValues} />
+                  </div>
+                </>
+              )}
             </div>
           )}
         </section>
