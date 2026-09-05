@@ -22,6 +22,7 @@ async function getAllTokens(preferred: string | undefined, userId: string, isAdm
     bm9: Deno.env.get("META_ACCESS_TOKEN_9"),
     bm10: Deno.env.get("META_ACCESS_TOKEN_10") || Deno.env.get("META_ACCESS_TOKEN_9"),
     bm11: Deno.env.get("META_ACCESS_TOKEN_11"),
+    bm12: Deno.env.get("META_ACCESS_TOKEN_12"),
 
   } : {};
   for (const d of await getDbAccountConfigs(userId)) {
