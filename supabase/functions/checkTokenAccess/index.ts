@@ -22,6 +22,7 @@ function serve_handler() {
       bm8: Deno.env.get("META_ACCESS_TOKEN_8"),
       bm9: Deno.env.get("META_ACCESS_TOKEN_9"),
       bm11: Deno.env.get("META_ACCESS_TOKEN_11"),
+      bm12: Deno.env.get("META_ACCESS_TOKEN_12"),
     };
 
     const results: Record<string, unknown> = {};

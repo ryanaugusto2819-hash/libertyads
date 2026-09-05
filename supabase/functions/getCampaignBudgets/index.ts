@@ -61,7 +61,9 @@ function getAccountConfigs(): AccountConfig[] {
   const t11 = Deno.env.get("META_ACCESS_TOKEN_11");
   if (t11 && a11) configs.push({ label: "bm11", accessToken: t11, adAccount: a11 });
 
-
+  const a12 = Deno.env.get("META_AD_ACCOUNT_12") || "1129381788031648";
+  const t12 = Deno.env.get("META_ACCESS_TOKEN_12");
+  if (t12 && a12) configs.push({ label: "bm12", accessToken: t12, adAccount: a12 });
 
   return configs;
 }
