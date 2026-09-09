@@ -128,6 +128,7 @@ Deno.serve(async (req) => {
       return undefined;
     };
 
+    const rowsMeta: any[] = [];
     const rows = entries.map((entry: any) => {
       const campaign = String(pick(entry, "campaign", "campanha") || "");
       let country = String(pick(entry, "country", "pais", "país") || "").toUpperCase().trim();
