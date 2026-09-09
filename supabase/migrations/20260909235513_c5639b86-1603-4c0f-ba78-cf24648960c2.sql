@@ -1,0 +1,2 @@
+ALTER TABLE public.webhook_sales ADD COLUMN IF NOT EXISTS external_id text;
+CREATE UNIQUE INDEX IF NOT EXISTS webhook_sales_user_external_id_key ON public.webhook_sales (user_id, external_id) WHERE external_id IS NOT NULL;

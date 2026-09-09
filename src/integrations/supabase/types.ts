@@ -509,6 +509,7 @@ export type Database = {
           creative: string
           currency: string
           date: string
+          external_id: string | null
           id: string
           phone: string | null
           revenue: number
@@ -522,6 +523,7 @@ export type Database = {
           creative?: string
           currency?: string
           date?: string
+          external_id?: string | null
           id?: string
           phone?: string | null
           revenue?: number
@@ -535,6 +537,7 @@ export type Database = {
           creative?: string
           currency?: string
           date?: string
+          external_id?: string | null
           id?: string
           phone?: string | null
           revenue?: number
