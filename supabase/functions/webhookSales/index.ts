@@ -151,10 +151,28 @@ Deno.serve(async (req) => {
 
       const phoneRaw = pick(entry, "phone", "telefone", "celular", "whatsapp", "telephone", "contact_phone");
       const receivedAt = pick(entry, "created_at", "timestamp", "sent_at", "paid_at", "event_time");
+
+      // Identifier of the order in the origin system. When it repeats, we update
+      // the existing sale instead of creating a new one (e.g. upsell added later).
+      const extRaw = pick(entry, "external_id", "order_id", "transaction_id", "sale_id", "pedido", "pedido_id", "venda_id", "id");
+      const external_id = extRaw ? String(extRaw).trim() : null;
+
+      // Increment mode: adds the amount to the existing sale instead of replacing it.
+      const actionRaw = String(pick(entry, "mode", "action", "tipo", "event", "evento") || "").toLowerCase();
+      const addValue = pick(entry, "revenue_add", "valor_adicional", "upsell", "upsell_value", "add_revenue");
+      const increment = addValue !== undefined ||
+        ["add", "increment", "upsell", "soma", "somar", "incrementar"].includes(actionRaw);
+
+      const revenue = addValue !== undefined
+        ? toNumber(addValue)
+        : toNumber(pick(entry, "revenue", "valor", "value", "price", "preco", "preço", "amount"));
+
+      rowsMeta.push({ external_id, increment });
+
       return {
         date: toBrtDate(receivedAt),
         campaign,
-        revenue: toNumber(pick(entry, "revenue", "valor", "value", "price", "preco", "preço", "amount")),
+        revenue,
         sales: 1,
         creative,
         country,
@@ -163,25 +181,68 @@ Deno.serve(async (req) => {
         currency: ["BRL", "UYU", "ARS", "PYG", "USD"].includes(payloadCurrency) ? payloadCurrency : "BRL",
         phone: phoneRaw ? String(phoneRaw).trim() : null,
         user_id: ownerId,
+        external_id,
       };
     });
 
+    let inserted = 0;
+    let updated = 0;
 
-    const { data, error } = await supabase
-      .from("webhook_sales")
-      .insert(rows)
-      .select();
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const meta = rowsMeta[i];
 
-    if (error) {
-      console.error("Insert error:", error);
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (meta.external_id) {
+        const { data: existing } = await supabase
+          .from("webhook_sales")
+          .select("id, revenue")
+          .eq("user_id", ownerId)
+          .eq("external_id", meta.external_id)
+          .maybeSingle();
+
+        if (existing) {
+          const newRevenue = meta.increment
+            ? Number(existing.revenue || 0) + Number(row.revenue || 0)
+            : Number(row.revenue || 0);
+
+          const patch: Record<string, any> = { revenue: newRevenue };
+          if (row.campaign) patch.campaign = row.campaign;
+          if (row.creative) patch.creative = row.creative;
+          if (row.country) patch.country = row.country;
+          if (row.phone) patch.phone = row.phone;
+          if (row.currency) patch.currency = row.currency;
+
+          const { error: updErr } = await supabase
+            .from("webhook_sales")
+            .update(patch)
+            .eq("id", existing.id);
+
+          if (updErr) {
+            console.error("Update error:", updErr);
+            return new Response(JSON.stringify({ error: updErr.message }), {
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          console.log(`Sale ${meta.external_id} updated: revenue=${newRevenue} (increment=${meta.increment})`);
+          updated++;
+          continue;
+        }
+      }
+
+      const { error } = await supabase.from("webhook_sales").insert(row);
+      if (error) {
+        console.error("Insert error:", error);
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      inserted++;
     }
 
     return new Response(
-      JSON.stringify({ success: true, inserted: data?.length || 0 }),
+      JSON.stringify({ success: true, inserted, updated }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
