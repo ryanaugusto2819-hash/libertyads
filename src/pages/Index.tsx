@@ -542,11 +542,12 @@ const Index = () => {
   const campaignOptions = useMemo(() => {
     const set = new Set<string>();
     filteredData.forEach((ad) => {
+      if (onlyActive && ad.status !== "active") return;
       const name = (ad.campaign_name || "").trim();
       if (name) set.add(name);
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [filteredData]);
+  }, [filteredData, onlyActive]);
 
   useEffect(() => {
     setSelectedCampaigns((prev) => {
