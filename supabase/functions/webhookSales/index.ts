@@ -195,17 +195,27 @@ Deno.serve(async (req) => {
       if (meta.external_id) {
         const { data: existing } = await supabase
           .from("webhook_sales")
-          .select("id, revenue")
+          .select("id, revenue, upsells, upsell_revenue")
           .eq("user_id", ownerId)
           .eq("external_id", meta.external_id)
           .maybeSingle();
 
         if (existing) {
+          const prevRevenue = Number(existing.revenue || 0);
           const newRevenue = meta.increment
-            ? Number(existing.revenue || 0) + Number(row.revenue || 0)
+            ? prevRevenue + Number(row.revenue || 0)
             : Number(row.revenue || 0);
 
+          // Any revenue added to an already registered sale is an upsell:
+          // the sale itself is not duplicated, only the ticket grows.
+          const added = newRevenue - prevRevenue;
+          const isUpsell = meta.increment ? Number(row.revenue || 0) > 0 : added > 0;
+
           const patch: Record<string, any> = { revenue: newRevenue };
+          if (isUpsell) {
+            patch.upsells = Number(existing.upsells || 0) + 1;
+            patch.upsell_revenue = Number(existing.upsell_revenue || 0) + Math.max(added, 0);
+          }
           if (row.campaign) patch.campaign = row.campaign;
           if (row.creative) patch.creative = row.creative;
           if (row.country) patch.country = row.country;
