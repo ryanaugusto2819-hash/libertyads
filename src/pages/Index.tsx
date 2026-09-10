@@ -1022,6 +1022,27 @@ const Index = () => {
           </section>
         )}
 
+        {/* Section: Upsells */}
+        {!loading && (
+          <section className="animate-fade-in-up" style={{ animationDelay: "350ms" }}>
+            <div className="flex items-center gap-2.5 mb-5">
+              <div className="h-4 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, #00d4ff, #0088cc)" }} />
+              <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                Upsells
+              </h2>
+            </div>
+            <UpsellTable
+              from={rangeDates.from}
+              to={rangeDates.to}
+              currencyRates={currencyRates}
+              countryFilter={countryFilter}
+              nichoFilter={nichoFilter}
+              selectedCampaigns={selectedCampaigns}
+            />
+          </section>
+        )}
+
+
         {/* Section: Webhook History */}
         <section className="animate-fade-in-up" style={{ animationDelay: "400ms" }}>
           <div className="flex items-center gap-2.5 mb-5">
