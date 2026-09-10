@@ -572,13 +572,22 @@ const Index = () => {
   const toggleCampaign = (name: string) =>
     setSelectedCampaigns((prev) => (prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]));
 
+  const activeFilteredData = useMemo(
+    () => (onlyActive ? filteredData.filter((ad) => ad.status === "active") : filteredData),
+    [filteredData, onlyActive]
+  );
+  const activeFilteredPrevData = useMemo(
+    () => (onlyActive ? filteredPrevData.filter((ad) => ad.status === "active") : filteredPrevData),
+    [filteredPrevData, onlyActive]
+  );
+
   const kpiAds = useMemo(
-    () => (selectedCampaigns.length === 0 ? filteredData : filteredData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
-    [filteredData, selectedCampaigns]
+    () => (selectedCampaigns.length === 0 ? activeFilteredData : activeFilteredData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
+    [activeFilteredData, selectedCampaigns]
   );
   const kpiPrevAds = useMemo(
-    () => (selectedCampaigns.length === 0 ? filteredPrevData : filteredPrevData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
-    [filteredPrevData, selectedCampaigns]
+    () => (selectedCampaigns.length === 0 ? activeFilteredPrevData : activeFilteredPrevData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
+    [activeFilteredPrevData, selectedCampaigns]
   );
   const kpiSales = useMemo(
     () => (selectedCampaigns.length === 0 ? filteredSalesData : filteredSalesData.filter((s) => matchesCampaignFilter(s.campaign || ""))),
