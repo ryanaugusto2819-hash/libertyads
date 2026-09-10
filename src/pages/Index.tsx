@@ -210,6 +210,7 @@ const Index = () => {
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [nichoFilter, setNichoFilter] = useState<string>("all");
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
+  const [onlyActive, setOnlyActive] = useState(false);
   const [bmFilter, setBmFilter] = useState<string>("all");
   const [campaignBudgets, setCampaignBudgets] = useState<Record<string, { daily_budget: number; name: string; status: string }>>({});
   const [overviewMode, setOverviewMode] = useState<"full" | "simple">("full");
@@ -541,11 +542,12 @@ const Index = () => {
   const campaignOptions = useMemo(() => {
     const set = new Set<string>();
     filteredData.forEach((ad) => {
+      if (onlyActive && ad.status !== "active") return;
       const name = (ad.campaign_name || "").trim();
       if (name) set.add(name);
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [filteredData]);
+  }, [filteredData, onlyActive]);
 
   useEffect(() => {
     setSelectedCampaigns((prev) => {
@@ -570,13 +572,22 @@ const Index = () => {
   const toggleCampaign = (name: string) =>
     setSelectedCampaigns((prev) => (prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]));
 
+  const activeFilteredData = useMemo(
+    () => (onlyActive ? filteredData.filter((ad) => ad.status === "active") : filteredData),
+    [filteredData, onlyActive]
+  );
+  const activeFilteredPrevData = useMemo(
+    () => (onlyActive ? filteredPrevData.filter((ad) => ad.status === "active") : filteredPrevData),
+    [filteredPrevData, onlyActive]
+  );
+
   const kpiAds = useMemo(
-    () => (selectedCampaigns.length === 0 ? filteredData : filteredData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
-    [filteredData, selectedCampaigns]
+    () => (selectedCampaigns.length === 0 ? activeFilteredData : activeFilteredData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
+    [activeFilteredData, selectedCampaigns]
   );
   const kpiPrevAds = useMemo(
-    () => (selectedCampaigns.length === 0 ? filteredPrevData : filteredPrevData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
-    [filteredPrevData, selectedCampaigns]
+    () => (selectedCampaigns.length === 0 ? activeFilteredPrevData : activeFilteredPrevData.filter((ad) => matchesCampaignFilter(ad.campaign_name || ""))),
+    [activeFilteredPrevData, selectedCampaigns]
   );
   const kpiSales = useMemo(
     () => (selectedCampaigns.length === 0 ? filteredSalesData : filteredSalesData.filter((s) => matchesCampaignFilter(s.campaign || ""))),
@@ -868,6 +879,16 @@ const Index = () => {
                 Resumido
               </button>
             </div>
+            <button
+              onClick={() => setOnlyActive((v) => !v)}
+              className={`px-2.5 py-1.5 rounded-md border text-[10px] font-medium transition-colors ${
+                onlyActive
+                  ? "bg-[#00ff88]/15 text-[#00ff88] border-[#00ff88]/40"
+                  : "bg-muted/40 text-muted-foreground border-border/60 hover:text-foreground"
+              }`}
+            >
+              Apenas ativas
+            </button>
             <Popover>
               <PopoverTrigger asChild>
                 <button className="h-8 w-[320px] max-w-full px-3 rounded-md border border-border bg-muted/40 text-xs flex items-center justify-between gap-2 hover:bg-muted/60 transition-colors">
