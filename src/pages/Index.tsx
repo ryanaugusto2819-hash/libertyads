@@ -879,6 +879,16 @@ const Index = () => {
                 Resumido
               </button>
             </div>
+            <button
+              onClick={() => setOnlyActive((v) => !v)}
+              className={`px-2.5 py-1.5 rounded-md border text-[10px] font-medium transition-colors ${
+                onlyActive
+                  ? "bg-[#00ff88]/15 text-[#00ff88] border-[#00ff88]/40"
+                  : "bg-muted/40 text-muted-foreground border-border/60 hover:text-foreground"
+              }`}
+            >
+              Apenas ativas
+            </button>
             <Popover>
               <PopoverTrigger asChild>
                 <button className="h-8 w-[320px] max-w-full px-3 rounded-md border border-border bg-muted/40 text-xs flex items-center justify-between gap-2 hover:bg-muted/60 transition-colors">
