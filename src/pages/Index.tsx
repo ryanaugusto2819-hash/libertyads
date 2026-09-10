@@ -14,6 +14,7 @@ import DateFilter from "@/components/dashboard/DateFilter";
 import AdsTable from "@/components/dashboard/AdsTable";
 import SpendChart from "@/components/dashboard/SpendChart";
 import WebhookHistory from "@/components/dashboard/WebhookHistory";
+import UpsellTable from "@/components/dashboard/UpsellTable";
 import SettingsDialog from "@/components/dashboard/SettingsDialog";
 import { useDashboardSettings } from "@/hooks/useDashboardSettings";
 
