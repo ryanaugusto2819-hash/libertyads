@@ -210,6 +210,7 @@ const Index = () => {
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [nichoFilter, setNichoFilter] = useState<string>("all");
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
+  const [onlyActive, setOnlyActive] = useState(false);
   const [bmFilter, setBmFilter] = useState<string>("all");
   const [campaignBudgets, setCampaignBudgets] = useState<Record<string, { daily_budget: number; name: string; status: string }>>({});
   const [overviewMode, setOverviewMode] = useState<"full" | "simple">("full");
