@@ -602,6 +602,19 @@ const Index = () => {
     return `overview|${format(from, "yyyy-MM-dd")}|${format(to, "yyyy-MM-dd")}`;
   }, [range, customRange]);
 
+  // Intervalo de datas atual (yyyy-MM-dd) usado pela tabela de upsells
+  const rangeDates = useMemo(() => {
+    const today = new Date();
+    let from = today;
+    let to = today;
+    if (range === "yesterday") { from = subDays(today, 1); to = subDays(today, 1); }
+    else if (range === "7days") { from = subDays(today, 6); }
+    else if (range === "30days") { from = subDays(today, 29); }
+    else if (range === "custom" && customRange) { from = customRange.from; to = customRange.to; }
+    return { from: format(from, "yyyy-MM-dd"), to: format(to, "yyyy-MM-dd") };
+  }, [range, customRange]);
+
+
   const [overviewOverrides, setOverviewOverrides] = useState<Record<string, { value: number; original: number | null }>>({});
   const [savingKpi, setSavingKpi] = useState<string | null>(null);
 
