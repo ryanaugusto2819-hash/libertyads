@@ -514,6 +514,8 @@ export type Database = {
           phone: string | null
           revenue: number
           sales: number
+          upsell_revenue: number
+          upsells: number
           user_id: string
         }
         Insert: {
@@ -528,6 +530,8 @@ export type Database = {
           phone?: string | null
           revenue?: number
           sales?: number
+          upsell_revenue?: number
+          upsells?: number
           user_id: string
         }
         Update: {
@@ -542,6 +546,8 @@ export type Database = {
           phone?: string | null
           revenue?: number
           sales?: number
+          upsell_revenue?: number
+          upsells?: number
           user_id?: string
         }
         Relationships: []

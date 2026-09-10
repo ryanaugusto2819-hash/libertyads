@@ -14,6 +14,7 @@ import DateFilter from "@/components/dashboard/DateFilter";
 import AdsTable from "@/components/dashboard/AdsTable";
 import SpendChart from "@/components/dashboard/SpendChart";
 import WebhookHistory from "@/components/dashboard/WebhookHistory";
+import UpsellTable from "@/components/dashboard/UpsellTable";
 import SettingsDialog from "@/components/dashboard/SettingsDialog";
 import { useDashboardSettings } from "@/hooks/useDashboardSettings";
 
@@ -601,6 +602,19 @@ const Index = () => {
     return `overview|${format(from, "yyyy-MM-dd")}|${format(to, "yyyy-MM-dd")}`;
   }, [range, customRange]);
 
+  // Intervalo de datas atual (yyyy-MM-dd) usado pela tabela de upsells
+  const rangeDates = useMemo(() => {
+    const today = new Date();
+    let from = today;
+    let to = today;
+    if (range === "yesterday") { from = subDays(today, 1); to = subDays(today, 1); }
+    else if (range === "7days") { from = subDays(today, 6); }
+    else if (range === "30days") { from = subDays(today, 29); }
+    else if (range === "custom" && customRange) { from = customRange.from; to = customRange.to; }
+    return { from: format(from, "yyyy-MM-dd"), to: format(to, "yyyy-MM-dd") };
+  }, [range, customRange]);
+
+
   const [overviewOverrides, setOverviewOverrides] = useState<Record<string, { value: number; original: number | null }>>({});
   const [savingKpi, setSavingKpi] = useState<string | null>(null);
 
@@ -1007,6 +1021,27 @@ const Index = () => {
             <AdsTable ads={deduplicatedAds} salesData={filteredSalesData} prevAds={deduplicatedPrevAds} prevSalesData={filteredPrevSalesData} isAdmin={true} campaignBudgets={campaignBudgets} bmFilter={bmFilter} currencyRates={currencyRates} />
           </section>
         )}
+
+        {/* Section: Upsells */}
+        {!loading && (
+          <section className="animate-fade-in-up" style={{ animationDelay: "350ms" }}>
+            <div className="flex items-center gap-2.5 mb-5">
+              <div className="h-4 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, #00d4ff, #0088cc)" }} />
+              <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                Upsells
+              </h2>
+            </div>
+            <UpsellTable
+              from={rangeDates.from}
+              to={rangeDates.to}
+              currencyRates={currencyRates}
+              countryFilter={countryFilter}
+              nichoFilter={nichoFilter}
+              selectedCampaigns={selectedCampaigns}
+            />
+          </section>
+        )}
+
 
         {/* Section: Webhook History */}
         <section className="animate-fade-in-up" style={{ animationDelay: "400ms" }}>
