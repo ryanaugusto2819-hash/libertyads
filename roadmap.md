@@ -1,1 +1,2 @@
 - [x] Remover o botão e a visualização “Modo foto” do dashboard.
+- [x] Adicionar opção para ocultar o filtro de campanhas da Visão Geral.
