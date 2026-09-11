@@ -729,7 +729,6 @@ const Index = () => {
   const convTrend = calcTrend(kpi.conversionRate, prevKpi.conversionRate);
   const ticketTrend = calcTrend(kpi.averageTicket, prevKpi.averageTicket);
 
-
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -929,7 +928,6 @@ const Index = () => {
               </button>
             )}
           </div>
-
 
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
