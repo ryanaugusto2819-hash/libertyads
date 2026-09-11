@@ -1,1 +1,1 @@
-- [ ] Remover o botão e a visualização “Modo foto” do dashboard.
+- [x] Remover o botão e a visualização “Modo foto” do dashboard.
