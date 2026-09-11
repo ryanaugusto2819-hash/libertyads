@@ -807,7 +807,7 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
                 <th className="bg-secondary/10" />
               </tr>
               <tr className="border-b border-border/20 bg-secondary/20">
-                <th onClick={() => toggleSort("adName")} className={`text-left ${thBase} min-w-[180px] sticky left-0 bg-secondary/20 z-10`}>Campanha <SortIcon col="adName" /></th>
+                <th onClick={() => toggleSort("adName")} className={`text-left ${thBase} min-w-[320px] sticky left-0 bg-secondary/20 z-10`}>Campanha <SortIcon col="adName" /></th>
                 <th className="text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-2 py-3">Status</th>
                 <th className="text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-2 py-3">Orçamento</th>
                 {/* Custos */}
@@ -855,7 +855,7 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
                     className="border-b border-border/[0.06] hover:bg-accent/40 transition-colors group"
                   >
                     {/* Name - sticky */}
-                    <td className="px-4 py-3.5 font-medium text-sm whitespace-nowrap sticky left-0 bg-background/80 backdrop-blur-sm z-10 group-hover:bg-accent/40 transition-colors">
+                    <td className="px-4 py-3.5 font-medium text-sm sticky left-0 bg-background/80 backdrop-blur-sm z-10 group-hover:bg-accent/40 transition-colors">
                       {(() => {
                         const lastEdit = campaignIds
                           .map((cid) => budgetHistory[cid])
@@ -865,7 +865,7 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
                           <div className="flex flex-col gap-0.5">
                             <div className="flex items-center gap-2">
                               <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isActive ? 'bg-profit' : 'bg-muted-foreground/40'}`} />
-                              <span className="truncate max-w-[160px]" title={ad.campaign_name || adName}>{ad.campaign_name || adName || "—"}</span>
+                              <span className="min-w-0 max-w-[360px] whitespace-normal break-words leading-snug" title={ad.campaign_name || adName}>{ad.campaign_name || adName || "—"}</span>
                             </div>
                             {lastEdit && (
                               <div
@@ -1110,10 +1110,10 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
               {/* Unmatched sales */}
               {unmatchedGroups.map((group) => (
                 <tr key={group.label} className="border-t border-border/20 bg-muted/20">
-                  <td className="px-4 py-3.5 font-medium text-sm whitespace-nowrap italic text-muted-foreground sticky left-0 bg-muted/20 z-10">
+                  <td className="px-4 py-3.5 font-medium text-sm italic text-muted-foreground sticky left-0 bg-muted/20 z-10">
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-muted-foreground/30" />
-                      <span className="truncate max-w-[220px]" title={group.label}>{group.label}</span>
+                      <span className="min-w-0 max-w-[360px] whitespace-normal break-words leading-snug" title={group.label}>{group.label}</span>
                     </div>
                   </td>
                   <td className="px-2 py-3.5 text-center"><Badge variant="secondary" className="bg-muted/60 text-muted-foreground border-0 text-[10px]">—</Badge></td>
