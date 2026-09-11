@@ -357,9 +357,27 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
   // Build rows data
   const allAdNames = ads.map(a => (a.ad_name || a.name || "").toLowerCase().trim()).filter(Boolean);
 
-  // Normalize: lowercase, remove punctuation, collapse whitespace
-  const norm = (s: string) => (s || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim().replace(/\s+/g, " ");
-  const extractCampaignKey = (value: string) => norm(value).match(/(?:^|\s)(uy|ar|br)\s+([a-z]+)\s+ads\s*0*(\d+)\s+api\s*0*(\d+)(?:\s|$)/)?.slice(1).join("|") || "";
+  // Normalize campaign aliases and ignore operational prefixes added during renames.
+  const norm = (s: string) => (s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/^ca\s*0*\d+\s+/, "")
+    .replace(/\b(mexico|mex)\b/g, "mx")
+    .replace(/\b(argentina)\b/g, "ar")
+    .replace(/\b(uruguay|uruguai)\b/g, "uy")
+    .replace(/\b(paraguay|paraguai)\b/g, "py")
+    .replace(/\b(brasil|brazil)\b/g, "br");
+  const extractCampaignKey = (value: string) => {
+    const normalized = norm(value);
+    const country = normalized.match(/(?:^|\s)(mx|uy|ar|br|py)(?:\s|$)/)?.[1];
+    const ad = normalized.match(/(?:^|\s)(?:ads?|ad)\s*0*(\d+)(?:\s|$)/)?.[1];
+    const api = normalized.match(/(?:^|\s)api\s*0*(\d+)(?:\s|$)/)?.[1];
+    return country && ad && api ? `${country}|${Number(ad)}|${Number(api)}` : "";
+  };
 
   // Match sales by CAMPAIGN NAME only (ignore creative/ad name)
   const matchSale = (s: any, _adNameNorm: string, adCampaignNorm: string, adName: string) => {
@@ -458,12 +476,13 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
       const adCampaignNorm = (ad.campaign_name || "").toLowerCase().trim();
       const matchedSales = prevSalesData.filter(s => {
         if (!adName) return false;
-        const cFull = (s.creative || "").toLowerCase().trim();
-        const campFull = (s.campaign || "").toLowerCase().trim();
+        const cFull = norm(s.creative || "");
+        const campFull = norm(s.campaign || "");
+        const normalizedAdCampaign = norm(adCampaignNorm);
         if (cFull && adNameNorm === cFull) return true;
-        if (campFull && adCampaignNorm && adCampaignNorm === campFull) return true;
-        if (campFull && adCampaignNorm && campFull.length > 5 && (adCampaignNorm.includes(campFull) || campFull.includes(adCampaignNorm))) return true;
-        if (cFull && adCampaignNorm && cFull.length > 5 && (adCampaignNorm.includes(cFull) || cFull.includes(adCampaignNorm))) return true;
+        if (campFull && normalizedAdCampaign && normalizedAdCampaign === campFull) return true;
+        if (campFull && normalizedAdCampaign && campFull.length > 5 && (normalizedAdCampaign.includes(campFull) || campFull.includes(normalizedAdCampaign))) return true;
+        if (cFull && normalizedAdCampaign && cFull.length > 5 && (normalizedAdCampaign.includes(cFull) || cFull.includes(normalizedAdCampaign))) return true;
         if (cFull) {
           const cStripped = cFull.replace(/ ar$/, "");
           if (cStripped !== cFull && !prevAllAdNames.includes(cFull) && adNameNorm === cStripped) return true;
@@ -492,10 +511,10 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
     return map;
   }, [prevAds, prevSalesData, prevAllAdNames]);
 
-  const allCampaignNames = ads.map(a => (a.campaign_name || "").toLowerCase().trim()).filter(Boolean);
+  const allCampaignNames = ads.map(a => norm(a.campaign_name || "")).filter(Boolean);
   const unmatchedSales = salesData.filter(s => {
     const cFull = (s.creative || "").toLowerCase().trim();
-    const campFull = (s.campaign || "").toLowerCase().trim();
+    const campFull = norm(s.campaign || "");
     if (!cFull && !campFull) return true;
     if (cFull === "sem criativo" || cFull === "não identificado" || cFull === "sem crtiativo" || cFull === "criativo não identificado") return true;
     if (cFull && allAdNames.includes(cFull)) return false;
