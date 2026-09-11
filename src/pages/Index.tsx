@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { DollarSign, Users, Target, BarChart3, Percent, TrendingUp, Receipt, Wallet, Activity, RefreshCw, Eye, EyeOff, Clock, Shield, LogOut, Bot, ChevronsUpDown, CalendarRange } from "lucide-react";
+import { DollarSign, Users, Target, BarChart3, Percent, TrendingUp, Receipt, Wallet, Activity, RefreshCw, Eye, EyeOff, Clock, Shield, LogOut, Bot, ChevronsUpDown, CalendarRange, Camera, X, type LucideIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import { format, subDays, differenceInDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -174,6 +175,25 @@ const SkeletonCard = () => (
   </div>
 );
 
+interface PhotoMetricProps {
+  title: string;
+  value: string;
+  icon: LucideIcon;
+  hidden?: boolean;
+}
+
+const PhotoMetric = ({ title, value, icon: Icon, hidden = false }: PhotoMetricProps) => (
+  <div className="min-w-0 rounded-md border border-border/70 bg-card/80 p-3">
+    <div className="mb-2 flex items-center gap-1.5 text-muted-foreground">
+      <Icon className="h-3.5 w-3.5 shrink-0 text-primary" />
+      <span className="truncate text-[9px] font-bold uppercase">{title}</span>
+    </div>
+    <p className="truncate font-data text-sm font-bold text-foreground sm:text-base">
+      {hidden ? "••••••" : value}
+    </p>
+  </div>
+);
+
 const Index = () => {
   const { isAdmin, signOut, user } = useAuth();
   const navigate = useNavigate();
@@ -215,6 +235,7 @@ const Index = () => {
   const [bmFilter, setBmFilter] = useState<string>("all");
   const [campaignBudgets, setCampaignBudgets] = useState<Record<string, { daily_budget: number; name: string; status: string }>>({});
   const [overviewMode, setOverviewMode] = useState<"full" | "simple">("full");
+  const [photoMode, setPhotoMode] = useState(false);
   const { niches, countries, bmAccounts, reload: reloadSettings } = useDashboardSettings();
 
   const currencyRates = useMemo(
@@ -729,11 +750,23 @@ const Index = () => {
   const convTrend = calcTrend(kpi.conversionRate, prevKpi.conversionRate);
   const ticketTrend = calcTrend(kpi.averageTicket, prevKpi.averageTicket);
 
+  const selectedCountryName = countryFilter === "all"
+    ? "Todos os países"
+    : countries.find((country) => country.code === countryFilter)?.name ?? countryFilter;
+  const selectedNicheName = nichoFilter === "all"
+    ? "Todos os nichos"
+    : niches.find((niche) => niche.keyword === nichoFilter)?.name ?? nichoFilter;
+  const selectedCampaignLabel = selectedCampaigns.length === 0
+    ? "Todas as campanhas"
+    : selectedCampaigns.length === 1
+      ? selectedCampaigns[0]
+      : `${selectedCampaigns.length} campanhas`;
+
 
   return (
-    <div className="min-h-screen">
+    <div className={`min-h-screen ${photoMode ? "bg-background" : ""}`}>
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border/40 header-glow px-6 py-3.5"
+      <header className={`${photoMode ? "hidden" : "sticky"} top-0 z-50 border-b border-border/40 header-glow px-6 py-3.5`}
         style={{ background: "rgba(4,4,16,0.88)", backdropFilter: "blur(24px)" }}>
         {/* Top purple line */}
         <div className="absolute inset-x-0 top-0 h-px accent-bar-purple opacity-60" />
@@ -844,7 +877,7 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="w-full px-6 py-8 space-y-8">
+      <main className={photoMode ? "mx-auto w-full max-w-[520px] px-3 py-4" : "w-full px-6 py-8 space-y-8"}>
         {/* Error Banner */}
         {error && (
           <div className="glass-card p-4 flex items-center gap-3 animate-fade-in-up badge-danger rounded-xl">
@@ -855,7 +888,34 @@ const Index = () => {
 
         {/* Section: KPIs */}
         <section>
-          <div className="flex items-center gap-3 mb-5 flex-wrap">
+          {photoMode && (
+            <div className="mb-4 border-b border-border/70 pb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="mb-1 flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-primary" />
+                    <h1 className="font-display text-base font-bold text-foreground">Resumo de performance</h1>
+                  </div>
+                  <p className="text-xs font-semibold text-primary">{periodLabel} · {periodSubLabel}</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 text-muted-foreground"
+                  onClick={() => setPhotoMode(false)}
+                  title="Sair do modo foto"
+                  aria-label="Sair do modo foto"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="mt-2 break-words text-[10px] leading-relaxed text-muted-foreground">
+                {selectedCountryName} · {selectedNicheName} · {selectedCampaignLabel}{onlyActive ? " · Apenas ativas" : ""}
+              </p>
+            </div>
+          )}
+          <div className={`${photoMode ? "hidden" : "flex"} items-center gap-3 mb-5 flex-wrap`}>
             <div className="flex items-center gap-2.5">
               <div className="h-4 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, #00e5ff, #0099cc)" }} />
               <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
@@ -928,10 +988,51 @@ const Index = () => {
                 limpar
               </button>
             )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 border-primary/30 bg-primary/10 px-2.5 text-[10px] text-primary hover:bg-primary/20 hover:text-primary"
+              onClick={() => setPhotoMode(true)}
+            >
+              <Camera className="h-3.5 w-3.5" />
+              Modo foto
+            </Button>
           </div>
 
-
-          {loading ? (
+          {photoMode && !loading ? (
+            <div className="space-y-4">
+              <div>
+                <h2 className="mb-2 text-[9px] font-bold uppercase text-muted-foreground">Resultado</h2>
+                <div className="grid grid-cols-3 gap-2">
+                  <PhotoMetric title="Valor gasto" value={`R$${fmt(kpi.totalSpent)}`} icon={DollarSign} hidden={hideValues} />
+                  <PhotoMetric title="Faturamento" value={`R$${fmt(kpi.totalRevenue)}`} icon={Wallet} hidden={hideValues} />
+                  <PhotoMetric title="Vendas" value={kpi.totalSales.toLocaleString("pt-BR")} icon={Receipt} hidden={hideValues} />
+                </div>
+              </div>
+              <div>
+                <h2 className="mb-2 text-[9px] font-bold uppercase text-muted-foreground">Vendas</h2>
+                <div className="grid grid-cols-3 gap-2">
+                  <PhotoMetric title="Ticket médio" value={`R$${fmt(kpi.averageTicket)}`} icon={TrendingUp} hidden={hideValues} />
+                  <PhotoMetric title="CPA" value={`R$${fmt(kpi.cpa)}`} icon={Target} hidden={hideValues} />
+                  <PhotoMetric title="Conversão" value={`${fmt(kpi.conversionRate)}%`} icon={Activity} hidden={hideValues} />
+                </div>
+              </div>
+              <div>
+                <h2 className="mb-2 text-[9px] font-bold uppercase text-muted-foreground">Eficiência</h2>
+                <div className="grid grid-cols-3 gap-2">
+                  <PhotoMetric title="ROAS" value={`${fmt(kpi.roi)}x`} icon={Percent} hidden={hideValues} />
+                  <PhotoMetric title="Leads" value={kpi.totalLeads.toLocaleString("pt-BR")} icon={Users} hidden={hideValues} />
+                  <PhotoMetric title="Custo / lead" value={`R$${fmt(kpi.costPerLead)}`} icon={Target} hidden={hideValues} />
+                </div>
+              </div>
+              {lastUpdate && (
+                <p className="pt-1 text-center text-[9px] text-muted-foreground">
+                  Atualizado em {lastUpdate.toLocaleDateString("pt-BR")} às {lastUpdate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                </p>
+              )}
+            </div>
+          ) : loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
               {Array.from({ length: overviewMode === "simple" ? 5 : 10 }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
@@ -1019,7 +1120,7 @@ const Index = () => {
         </section>
 
         {/* Section: Chart */}
-        {!loading && (
+        {!loading && !photoMode && (
           <section className="animate-fade-in-up" style={{ animationDelay: "200ms" }}>
             <div className="flex items-center gap-2.5 mb-5">
               <div className="h-4 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, #00ff88, #00cc66)" }} />
@@ -1032,7 +1133,7 @@ const Index = () => {
         )}
 
         {/* Section: Table */}
-        {!loading && (
+        {!loading && !photoMode && (
           <section className="animate-fade-in-up" style={{ animationDelay: "300ms" }}>
             <div className="flex items-center gap-2.5 mb-5">
               <div className="h-4 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, #ffaa00, #cc8800)" }} />
@@ -1045,7 +1146,7 @@ const Index = () => {
         )}
 
         {/* Section: Upsells */}
-        {!loading && (
+        {!loading && !photoMode && (
           <section className="animate-fade-in-up" style={{ animationDelay: "350ms" }}>
             <div className="flex items-center gap-2.5 mb-5">
               <div className="h-4 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, #00d4ff, #0088cc)" }} />
@@ -1066,7 +1167,7 @@ const Index = () => {
 
 
         {/* Section: Webhook History */}
-        <section className="animate-fade-in-up" style={{ animationDelay: "400ms" }}>
+        {!photoMode && <section className="animate-fade-in-up" style={{ animationDelay: "400ms" }}>
           <div className="flex items-center gap-2.5 mb-5">
             <div className="h-4 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, #f045c8, #c030a0)" }} />
             <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
@@ -1074,7 +1175,7 @@ const Index = () => {
             </h2>
           </div>
           <WebhookHistory />
-        </section>
+        </section>}
       </main>
     </div>
   );
