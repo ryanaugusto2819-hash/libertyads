@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Video, Upload, Trash2, Play, TrendingUp, TrendingDown, Minus, Search, ArrowUp, ArrowDown, ArrowUpDown, DollarSign, Check, X, Loader2, History, Pencil, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { campaignsMatch, getCampaignKey, normalizeCampaignName } from "@/lib/campaignMatching";
 import {
   Dialog,
   DialogContent,
@@ -357,27 +358,8 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
   // Build rows data
   const allAdNames = ads.map(a => (a.ad_name || a.name || "").toLowerCase().trim()).filter(Boolean);
 
-  // Normalize campaign aliases and ignore operational prefixes added during renames.
-  const norm = (s: string) => (s || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .replace(/\s+/g, " ")
-    .replace(/^ca\s*0*\d+\s+/, "")
-    .replace(/\b(mexico|mex)\b/g, "mx")
-    .replace(/\b(argentina)\b/g, "ar")
-    .replace(/\b(uruguay|uruguai)\b/g, "uy")
-    .replace(/\b(paraguay|paraguai)\b/g, "py")
-    .replace(/\b(brasil|brazil)\b/g, "br");
-  const extractCampaignKey = (value: string) => {
-    const normalized = norm(value);
-    const country = normalized.match(/(?:^|\s)(mx|uy|ar|br|py)(?:\s|$)/)?.[1];
-    const ad = normalized.match(/(?:^|\s)(?:ads?|ad)\s*0*(\d+)(?:\s|$)/)?.[1];
-    const api = normalized.match(/(?:^|\s)api\s*0*(\d+)(?:\s|$)/)?.[1];
-    return country && ad && api ? `${country}|${Number(ad)}|${Number(api)}` : "";
-  };
+  const norm = normalizeCampaignName;
+  const extractCampaignKey = getCampaignKey;
 
   // Match sales by CAMPAIGN NAME only (ignore creative/ad name)
   const matchSale = (s: any, _adNameNorm: string, adCampaignNorm: string, adName: string) => {
@@ -385,11 +367,7 @@ const AdsTable = ({ ads, salesData = [], prevAds = [], prevSalesData = [], isAdm
     const campFull = norm(s.campaign || "");
     const adCamp = norm(adCampaignNorm);
     if (!campFull || !adCamp) return { match: false, byCreative: false };
-    const saleKey = extractCampaignKey(s.campaign || "");
-    const adKey = extractCampaignKey(adCampaignNorm || "");
-    if (saleKey && adKey && saleKey === adKey) return { match: true, byCreative: false };
-    if (adCamp === campFull) return { match: true, byCreative: false };
-    if (campFull.length > 5 && (adCamp.includes(campFull) || campFull.includes(adCamp))) return { match: true, byCreative: false };
+    if (campaignsMatch(s.campaign || "", adCampaignNorm)) return { match: true, byCreative: false };
     return { match: false, byCreative: false };
   };
 

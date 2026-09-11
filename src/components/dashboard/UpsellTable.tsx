@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { campaignsMatch } from "@/lib/campaignMatching";
 
 interface UpsellTableProps {
   from: string;
@@ -61,7 +62,7 @@ const UpsellTable = ({ from, to, currencyRates, countryFilter = "all", nichoFilt
       const hay = `${campaign} ${s.creative || ""}`.toLowerCase();
       if (countryFilter !== "all" && String(s.country || "").toUpperCase() !== countryFilter.toUpperCase()) return false;
       if (nichoFilter !== "all" && !hay.includes(nichoFilter.toLowerCase())) return false;
-      if (selectedCampaigns.length > 0 && !selectedCampaigns.some((c) => campaign.includes(c) || c.includes(campaign))) return false;
+      if (selectedCampaigns.length > 0 && !selectedCampaigns.some((c) => campaignsMatch(campaign, c))) return false;
       return true;
     });
 
