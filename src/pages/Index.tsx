@@ -17,6 +17,7 @@ import WebhookHistory from "@/components/dashboard/WebhookHistory";
 import UpsellTable from "@/components/dashboard/UpsellTable";
 import SettingsDialog from "@/components/dashboard/SettingsDialog";
 import { useDashboardSettings } from "@/hooks/useDashboardSettings";
+import { campaignsMatch, normalizeCampaignName } from "@/lib/campaignMatching";
 
 interface SaleEntry {
   date: string;
@@ -556,7 +557,7 @@ const Index = () => {
     });
   }, [campaignOptions]);
 
-  const normName = (v: string) => (v || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const normName = normalizeCampaignName;
 
   const matchesCampaignFilter = (value: string) => {
     if (selectedCampaigns.length === 0) return true;
@@ -565,7 +566,7 @@ const Index = () => {
     return selectedCampaigns.some((sel) => {
       const target = normName(sel);
       if (!target) return false;
-      return candidate === target || candidate.includes(target) || target.includes(candidate);
+      return campaignsMatch(candidate, target);
     });
   };
 
