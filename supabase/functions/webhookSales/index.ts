@@ -211,7 +211,9 @@ Deno.serve(async (req) => {
           const added = newRevenue - prevRevenue;
           const isUpsell = meta.increment ? Number(row.revenue || 0) > 0 : added > 0;
 
-          const patch: Record<string, any> = { revenue: newRevenue };
+          // Reprocessing an existing order must reactivate its sale count.
+          // This also supports temporary resets without deleting webhook history.
+          const patch: Record<string, any> = { revenue: newRevenue, sales: 1 };
           if (isUpsell) {
             patch.upsells = Number(existing.upsells || 0) + 1;
             patch.upsell_revenue = Number(existing.upsell_revenue || 0) + Math.max(added, 0);
